@@ -79,8 +79,39 @@
 
     
     
+<div class="section level2">
+<h2 id="install-phython-package-phydrus">Install Phython Package phydrus<a class="anchor" aria-label="anchor" href="#install-phython-package-phydrus"></a>
+</h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/KWB-R/flextreat.hydrus1d" class="external-link">flextreat.hydrus1d</a></span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/KWB-R/flextreat.hydrus1d" class="external-link">flextreat.hydrus1d</a></span><span class="op">)</span>
+
+<span class="va">env</span> <span class="op">&lt;-</span> <span class="st">"flextreat"</span>
+
+<span class="fu">kwb.python</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.python/man/conda_py_install.html" class="external-link">conda_py_install</a></span><span class="op">(</span>env_name <span class="op">=</span> <span class="va">env</span>, 
+                             pkgs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>conda<span class="op">=</span><span class="st">"python=3.9"</span>,
+                                         py <span class="op">=</span> <span class="st">"https://github.com/phydrus/phydrus/zipball/dev/79823e797662b9838dda13888e3ead962c6699d0"</span><span class="op">)</span><span class="op">)</span>
+<span class="co">#&gt; * Installing Miniconda -- please wait a moment ...</span>
+<span class="co">#&gt; * Downloading 'https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh' ...</span>
+<span class="co">#&gt; * Miniconda has been successfully installed at "~/Library/r-miniconda".</span>
+<span class="co">#&gt; python:         /Users/runner/Library/r-miniconda/envs/flextreat/bin/python</span>
+<span class="co">#&gt; libpython:      /Users/runner/Library/r-miniconda/envs/flextreat/lib/libpython3.9.dylib</span>
+<span class="co">#&gt; pythonhome:     /Users/runner/Library/r-miniconda/envs/flextreat:/Users/runner/Library/r-miniconda/envs/flextreat</span>
+<span class="co">#&gt; version:        3.9.10 | packaged by conda-forge | (main, Feb  1 2022, 21:27:48)  [Clang 11.1.0 ]</span>
+<span class="co">#&gt; numpy:           [NOT FOUND]</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; NOTE: Python version was forced by use_python function</span>
+
+<span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/use_python.html" class="external-link">use_miniconda</a></span><span class="op">(</span>condaenv <span class="op">=</span> <span class="va">env</span>, required <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+<span class="va">phydrus</span> <span class="op">&lt;-</span> <span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/import.html" class="external-link">import</a></span><span class="op">(</span><span class="st">"phydrus"</span>, convert <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">m</span> <span class="op">&lt;-</span> <span class="va">phydrus</span><span class="op">$</span><span class="va">model</span><span class="op">$</span><span class="fu">Model</span><span class="op">(</span>exe_name <span class="op">=</span> <span class="st">"C:/Program Files (x86)/PC-Progress/Hydrus-1D 4.xx/H1D_CALC.EXE"</span>,
+                         ws_name <span class="op">=</span> <span class="st">"test"</span>,
+                         name <span class="op">=</span> <span class="st">"Test"</span>,
+                         description <span class="op">=</span> <span class="st">"Test for FlexTreat"</span>,
+                         length_unit <span class="op">=</span> <span class="st">"cm"</span>,
+                         time_unit <span class="op">=</span> <span class="st">"days"</span>,
+                         mass_units <span class="op">=</span> <span class="st">"mmol"</span><span class="op">)</span></code></pre></div>
+</div>
   </main>
 </div>
 
