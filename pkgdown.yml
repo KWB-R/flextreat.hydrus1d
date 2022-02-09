@@ -1,0 +1,10 @@
+pandoc: 2.7.3
+pkgdown: 2.0.2
+pkgdown_sha: ~
+articles:
+  modelling: modelling.html
+last_built: 2022-02-09T10:18Z
+urls:
+  reference: https://kwb-r.github.io/flextreat.hydrus1d/reference
+  article: https://kwb-r.github.io/flextreat.hydrus1d/articles
+
