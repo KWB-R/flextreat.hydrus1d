@@ -14,6 +14,30 @@ knitr::opts_chunk$set(
 )
 ```
 
+
+## Install Phython Package phydrus
+
 ```{r setup}
 library(flextreat.hydrus1d)
+
+env <- "flextreat"
+
+kwb.python::conda_py_install(env_name = env, 
+                             pkgs = list(conda="python=3.9",
+                                         py = "https://github.com/phydrus/phydrus/zipball/dev/79823e797662b9838dda13888e3ead962c6699d0"))
+
+reticulate::use_miniconda(condaenv = env, required = TRUE)
+phydrus <- reticulate::import("phydrus", convert = TRUE)
+
+
+```
+```{r define_model,  eval=FALSE}
+m <- phydrus$model$Model(exe_name = "C:/Program Files (x86)/PC-Progress/Hydrus-1D 4.xx/H1D_CALC.EXE",
+                         ws_name = "test",
+                         name = "Test",
+                         description = "Test for FlexTreat",
+                         length_unit = "cm",
+                         time_unit = "days",
+                         mass_units = "mmol")
+
 ```
