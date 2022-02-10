@@ -12,6 +12,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+
+is_windows <- Sys.info()[1] == "Windows"
 ```
 
 
@@ -19,45 +21,12 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 
-is_windows <- Sys.info()[1] == "Windows"
-
 library(flextreat.hydrus1d)
 
-if(is_windows) {
-### Download Hydrus1D v4.08 executable 
-### see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697
-source_path <- "https://www.pc-progress.com//Downloads/Pgm_Hydrus1D/H1D_4_08.exe"
-exe_path <- file.path(getwd(), basename(source_path))
-download.file(url = source_file,
-              destfile = exe_path)
-} else {
-exe_path <- "path-to-your-executable"
-}
-
+### Compile Hydrus1D v4.08 for windows 
+### based on: https://github.com/phydrus/source_code/tree/main/source
+exe_path <- flextreat.hydrus1d::create_hydrus_exe()
 writeLines(exe_path, "exe_path.txt")
-
-# tdir <- file.path(getwd(), "hydrus1d")
-# fs::file_copy(path = file.path(tdir, "make.bat"),
-#               new_path = file.path(tdir, "source/make.bat")
-#               )
-# Download source code for latest open-source Hydrus1D release
-# archive::archive_extract(archive = "https://github.com/phydrus/source_code/archive/refs/heads/main.zip",
-#                          dir = tdir,
-#                          strip_components = 1
-#                          )
-# 
-# binpath <- "C:/rtools40/mingw64/bin"
-# 
-# if(dir.exists(binpath)) {
-# cmd <- paste0("set PATH=%PATH%;", kwb.utils::windowsPath(binpath), "\n", 
-#               "cd ", kwb.utils::windowsPath(file.path(tdir, "source\n")),
-#               "make.bat")
-# writeLines(cmd, "batch.")
-# }
-# 
-# system2(command = cmd)
-
-library(flextreat.hydrus1d)
 
 env <- "flextreat"
 
@@ -108,46 +77,6 @@ ml = ps.model.Model(exe_name = exe_path,
                     mass_units = "mmol")
                     
                     
-ml.add_time_info(tinit=0, tmax=10)
-ml.add_waterflow(model=0, top_bc=3, bot_bc=4)
-
-m = ml.get_empty_material_df(n=2)
-m.loc[0:2] = [[0.0, 0.3382, 0.0111, 1.4737, 13, 0.5],
-              [0.0, 0.3579, 0.0145, 1.5234, 50, 0.5]]
-ml.add_material(m)
-
-# Define loop for potential root water uptake distribution proposed by Hoffman and Van Genuchten
-def z_loop(z, r1 = 10, r2 = 20):
-    if z > -r1:
-        return 1
-    elif z < -(r1 + r2):
-        return 0
-    else:
-        return(z+(r1+r2))/r2
-
-bottom = [-30, -100]  # Depth of the soil column
-nodes = 150  # Dictretize into n nodes
-ihead = -500  # Determine initial pressure head
-
-profile = ps.create_profile(bot=bottom, dx=1, h=ihead, mat=[1,2])
-profile["Beta"] = profile.apply(lambda row: z_loop(row["x"]), axis=1)
-ml.add_profile(profile)
-ml.plots.profile(figsize=(3,6))
-
-atm = pd.read_csv("atmosphere.csv", index_col=0)
-ml.add_atmospheric_bc(atm, hcrits=0)
-
-ml.add_root_uptake(model=0, p2h=-1500, p2l=-1500, poptm=[-25, -25])
-
-#Number of the node -- > write script to get node closest to desired depth
-ml.add_obs_nodes([-30, -60])
-
-# Write the input and check if the model simulates
-ml.write_input()
-ml.simulate()
-```
-
-```{python eval = FALSE}
 times = ml.add_time_info(
   # tinit: int, optional
   #     Initial time of the simulation [T].

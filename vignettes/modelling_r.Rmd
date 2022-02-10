@@ -12,6 +12,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+
+is_windows <- Sys.info()[1] == "Windows"
+
 ```
 
 
@@ -19,20 +22,11 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 
-is_windows <- Sys.info()[1] == "Windows"
-
 library(flextreat.hydrus1d)
 
-if(is_windows) {
-### Download Hydrus1D v4.08 executable 
-### see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697
-source_path <- "https://www.pc-progress.com//Downloads/Pgm_Hydrus1D/H1D_4_08.exe"
-exe_path <- file.path(getwd(), basename(source_path))
-download.file(url = source_file,
-              destfile = exe_path)
-} else {
-exe_path <- "path-to-your-executable"
-}
+### Compile Hydrus1D v4.08 for windows 
+### based on: https://github.com/phydrus/source_code/tree/main/source
+exe_path <- flextreat.hydrus1d::create_hydrus_exe()
 
 env <- "flextreat"
 
