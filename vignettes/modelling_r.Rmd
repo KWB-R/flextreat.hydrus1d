@@ -1,8 +1,8 @@
 ---
-title: "Modelling"
+title: "Modelling with R"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Modelling}
+  %\VignetteIndexEntry{Modelling with R}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,7 +18,21 @@ knitr::opts_chunk$set(
 ## Install Phython Package phydrus
 
 ```{r setup}
+
+is_windows <- Sys.info()[1] == "Windows"
+
 library(flextreat.hydrus1d)
+
+if(is_windows) {
+### Download Hydrus1D v4.08 executable 
+### see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697
+source_path <- "https://www.pc-progress.com//Downloads/Pgm_Hydrus1D/H1D_4_08.exe"
+exe_path <- file.path(getwd(), basename(source_path))
+download.file(url = source_file,
+              destfile = exe_path)
+} else {
+exe_path <- "path-to-your-executable"
+}
 
 env <- "flextreat"
 
@@ -33,9 +47,11 @@ env_yml <- kwb.python::conda_export(condaenv = env, export_dir = ".")
 env_yml <- basename(env_yml)
 ```
 For reproducing the Python environment used for the `Hydrus1D` modelling you can 
-download the [`r env_yml`](../`r env_yml`).
+download the [`r env_yml`](../`r env_yml`). Keep in mind that `phydrus` was developed
+for the last open-source release (`hydrus v4.0.8`) and is not compatible with the 
+lastest `hydrus v4.17` (see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
 
-```{r define_model,  eval=FALSE}
+```{r define_model,  eval=TRUE}
 
 ###############################################################################
 # 0 General Model Settings
@@ -43,7 +59,7 @@ download the [`r env_yml`](../`r env_yml`).
 
 
 #reticulate::py_help(object = phydrus$model$Model)
-ml <- ps$model$Model(exe_name = "C:/Program Files (x86)/PC-Progress/Hydrus-1D 4.xx/H1D_CALC.EXE",
+ml <- ps$model$Model(exe_name = exe_path,
                      ws_name = "test",
                      name = "Test",
                      description = "Test for FlexTreat",
@@ -503,8 +519,8 @@ ml$add_atmospheric_bc(
 ml$atmosphere
 ml$write_input()
 
-
 ```
 
-
-
+```{r run_model,  eval=is_windows}
+ml$simulate()
+```
