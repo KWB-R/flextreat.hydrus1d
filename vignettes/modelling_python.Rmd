@@ -44,10 +44,10 @@ write.csv(atmosphere, file = "atmosphere.csv", row.names = FALSE)
 For reproducing the Python environment used for the `Hydrus1D` modelling you can 
 download the [`r env_yml`](../`r env_yml`). Keep in mind that `phydrus` was developed
 for the last open-source release (`hydrus v4.0.8`) and is not compatible with the 
-lastest `hydrus v4.17` (see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
+lastest `hydrus v4.17.0140` (see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
 
 
-```{python define_model,  eval=TRUE}
+```{python define_model_test,  eval=TRUE}
 
 # Import the necessary modules
 import os
@@ -63,10 +63,15 @@ import phydrus as ps
 ###############################################################################
 # 0 General Model Settings
 ###############################################################################
+
+### Hydrus 1D 4.17.0140 	15.11.2018 ("phydrus" wrapper does not work)
+#exe_path = "C:/Program Files (x86)/PC-Progress/Hydrus-1D 4.xx/H1D_CALC.EXE"
+
+
+### Hydrus 1D 4.08 	04.01.2009 ("phydrus" wrapper works)
 exe_path = open("exe_path.txt").read().splitlines()
 exe_path = ''.join(exe_path)
 exe_path
-
 
 ml = ps.model.Model(exe_name = exe_path,
                     ws_name = "test",
@@ -77,6 +82,55 @@ ml = ps.model.Model(exe_name = exe_path,
                     mass_units = "mmol")
                     
                     
+ml.add_time_info(tinit=0, tmax=1)
+ml.add_waterflow(top_bc=3, bot_bc=4)
+
+# Add the process solute transport
+ml.add_solute_transport(lupw=True)
+
+# Add materials
+m = ml.get_empty_material_df(n=1)
+m.loc[0:1] = [[0.0, 0.3382, 0.0111, 1.4737, 13, 0.5, 1.5, 30.0, 1, 0]]
+ml.add_material(m)
+
+bottom = -100  # Depth of the soil column
+ihead = -500  # Determine initial pressure head
+
+profile = ps.create_profile(
+  bot = -100, # Depth of the soil column
+  dx = 1, 
+  h = -500  # Determine initial pressure head 
+  conc=1e-10, mat = 1, lay= 1)
+
+ml.add_profile(profile)
+
+ml.add_obs_nodes([-30, -60])
+
+sol = ml.get_empty_solute_df()
+sol.loc[:, "beta"] = 1.0
+ml.add_solute(sol,difw=1e-9)
+
+atm = pd.read_csv("atmosphere.csv", index_col=0)
+atm["cBot"] = 0.0
+atm["cTop"] = 0.0
+atm.loc[0, "cTop"] = 1.0
+ml.add_atmospheric_bc(atm, hcrits=0)
+
+# Write the input and check if the model simulates
+ml.write_input()
+```
+
+```{python run_model, eval = is_windows}
+from datetime import datetime
+start_time = datetime.now()
+# Run simulation
+ml.simulate()
+end_time = datetime.now()
+print('Duration: {}'.format(end_time - start_time))
+
+```
+                    
+```{python define_model, echo = FALSE, eval=FALSE}                    
 times = ml.add_time_info(
   # tinit: int, optional
   #     Initial time of the simulation [T].
@@ -516,5 +570,11 @@ ml.write_input()
 ```
 
 ```{python eval = is_windows}
+from datetime import datetime
+start_time = datetime.now()
+# Run simulation
 ml.simulate()
+end_time = datetime.now()
+print('Duration: {}'.format(end_time - start_time))
+
 ```
