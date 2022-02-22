@@ -47,7 +47,7 @@ for the last open-source release (`hydrus v4.0.8`) and is not compatible with th
 lastest `hydrus v4.17.0140` (see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
 
 
-```{python define_model_test,  eval=TRUE}
+```{python define_model_test,  eval = is_windows}
 
 # Import the necessary modules
 import os
