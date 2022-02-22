@@ -50,7 +50,9 @@ kwb.python::conda_py_install(env_name = env,
 
 reticulate::use_miniconda(condaenv = env, required = TRUE)
 
-env_yml <- kwb.python::conda_export(condaenv = env, export_dir = ".")
+tdir <- tempdir()
+env_yml <- kwb.python::conda_export(condaenv = env, export_dir = tdir)
+file.copy(env_yml, basename(env_yml), overwrite = TRUE)
 env_yml <- basename(env_yml)
 data(atmosphere)
 write.csv(atmosphere, file = "atmosphere.csv", row.names = FALSE)
