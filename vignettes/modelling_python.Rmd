@@ -13,7 +13,6 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-is_windows <- Sys.info()[1] == "Windows"
 ```
 
 
@@ -21,12 +20,16 @@ is_windows <- Sys.info()[1] == "Windows"
 
 ```{r setup}
 
+is_windows <- Sys.info()[1] == "Windows"
+
 library(flextreat.hydrus1d)
 
 ### Compile Hydrus1D v4.08 for windows 
 ### based on: https://github.com/phydrus/source_code/tree/main/source
-exe_path <- flextreat.hydrus1d::create_hydrus_exe()
-writeLines(exe_path, "exe_path.txt")
+if(is_windows) {
+  exe_path <- flextreat.hydrus1d::create_hydrus_exe()
+  writeLines(exe_path, "exe_path.txt")
+}
 
 env <- "flextreat"
 
@@ -47,7 +50,7 @@ for the last open-source release (`hydrus v4.0.8`) and is not compatible with th
 lastest `hydrus v4.17.0140` (see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
 
 
-```{python define_model_test,  eval=TRUE}
+```{python define_model_test,  eval = is_windows}
 
 # Import the necessary modules
 import os
