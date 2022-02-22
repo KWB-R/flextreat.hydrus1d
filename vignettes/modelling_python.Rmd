@@ -15,6 +15,17 @@ knitr::opts_chunk$set(
 
 ```
 
+## Install R Package
+
+```{r eval=FALSE}
+# Enable this universe
+options(repos = c(
+  kwbr = 'https://kwb-r.r-universe.dev',
+  CRAN = 'https://cloud.r-project.org'))
+# Install R package
+install.packages('flextreat.hydrus1d')
+```
+
 
 ## Install Phython Package phydrus
 
