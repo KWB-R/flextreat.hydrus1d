@@ -51,6 +51,7 @@ kwb.python::conda_py_install(env_name = env,
 reticulate::use_miniconda(condaenv = env, required = TRUE)
 
 tdir <- tempdir()
+fs::dir_create(tdir)
 env_yml <- kwb.python::conda_export(condaenv = env, export_dir = tdir)
 file.copy(env_yml, basename(env_yml), overwrite = TRUE)
 env_yml <- basename(env_yml)
