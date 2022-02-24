@@ -41,7 +41,8 @@ jobs:
         shell: Rscript {0}
 
       - name: Install package
-        run: R CMD INSTALL .
+        run: |
+          remotes::install_github("kwb-r/flextreat.hydrus1d")
 
       - name: Deploy package
         run: |
