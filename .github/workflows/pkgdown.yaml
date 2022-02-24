@@ -34,16 +34,17 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-2-
 
       - name: Install dependencies
-        run: R CMD INSTALL .
-        shell: cmd {0}
+        run: |
+          remotes::install_deps(dependencies = TRUE)
+          install.packages("pkgdown", type = "binary")
+        shell: Rscript {0}
 
       - name: Install package
-        run:|
-          install.packages('remotes')
-        shell: Rscript {0}
+        run: R CMD INSTALL .
+        shell: cmd {0}
 
       - name: Deploy package
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          Rscript -e 'kwb.pkgbuild::deploy_to_branch_with_extra_files(vignettes_file_pattern_to_copy = "\\\.yml$")'
+          Rscript -e 'kwb.pkgbuild::deploy_to_branch_with_extra_files(vignettes_file_pattern_to_copy = "yml$")'
