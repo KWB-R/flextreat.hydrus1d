@@ -29,6 +29,11 @@ create_hydrus_exe <- function() {
                   overwrite = TRUE
     )
 
+    fs::file_copy(path = file.path(tdir, "Makefile"),
+                  new_path = file.path(tdir, "source/Makefile"),
+                  overwrite = TRUE
+    )
+
     binpath <- kwb.utils::windowsPath(stringr::str_replace(pkgbuild::rtools_path(),
                                                            "usr",
                                                            "mingw64"))
@@ -45,7 +50,10 @@ create_hydrus_exe <- function() {
       stop("Rtools not installed")
     }
   } else {
-    stop("Not implemented yet for Linux/MacOS")
+    cmd <- paste0("cd ", file.path(tdir, "source\n"),
+                  "make -f makefile")
+    system2(command = cmd)
+    return(file.path(tdir, "source/hydrus"))
   }
 
 }
