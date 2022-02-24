@@ -9,7 +9,7 @@ name: pkgdown
 
 jobs:
   pkgdown:
-    runs-on: windows-2019
+    runs-on: windows-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -34,14 +34,13 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-2-
 
       - name: Install dependencies
-        run: |
-          remotes::install_deps(dependencies = TRUE)
-          install.packages("pkgdown")
-          remotes::install_github("kwb-r/kwb.pkgbuild")
-        shell: Rscript {0}
+        run: R CMD INSTALL .
+        shell: cmd {0}
 
       - name: Install package
-        run: "R CMD INSTALL ."
+        run:|
+          install.packages('remotes')
+        shell: Rscript {0}
 
       - name: Deploy package
         run: |
