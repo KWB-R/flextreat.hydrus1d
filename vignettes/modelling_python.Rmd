@@ -98,7 +98,7 @@ ml = ps.model.Model(exe_name = exe_path,
                     
 ml.add_time_info(
   tinit = 0, #Initial time of the simulation [T].
-  tmax = 3, #Final time of the simulation [T].
+  tmax = 2, #Final time of the simulation [T].
   print_times = True
     #Set to True. if information of pressure head, water contents,
     #temperatures, and concentrations in observation nodes, and
@@ -125,21 +125,21 @@ ml.add_waterflow(
     #7 = Horizontal Drains.
   )
 
-# Add the process solute transport
-ml.add_solute_transport(
-  lupw = True
-  )
+## Add the process solute transport
+# ml.add_solute_transport(
+#   lupw = True
+#   )
 
 # Add materials
 m = ml.get_empty_material_df(n=2)
-m.loc[0:2] = [[0.0, 0.3382, 0.0111, 1.4737, 13, 0.5, 1.5, 30.0, 1, 0],
-              [0.0, 0.3579, 0.0145, 1.5234, 50, 0.5, 1.5, 30.0, 1, 0]]
+m.loc[0:2] = [[0.0449, 0.3833, 0.0385, 3.2783, 619.18, 0.5],
+              [0.04985, 0.377475, 0.03485, 3.8696, 1188.05, 0.5]]
 ml.add_material(m)
 
 profile = ps.create_profile(
   top = 0, #float, optional
     #Top of the soil column.
-  bot = [-30, -100], #float or list of float, optional
+  bot = [-60, -200], #float or list of float, optional
     #Bottom of the soil column. If a list is provided, multiple layers are
     #created and other arguments need to be of the same length (e.g. mat).
   dx = 1, #float, optional
@@ -156,21 +156,21 @@ profile = ps.create_profile(
 ml.add_profile(profile)
 
 ml.add_obs_nodes(
-  depths = [-30, -60] #list of ints
+  depths = [-30, -60, -90, -120, -160, -200] #list of ints
     #List of floats denoting the depth of the nodes. The depth is
     #defined in the same length unit as selected in ml.model function.
     #The function defines the closest node to the desired depth.
   )
 
-sol = ml.get_empty_solute_df()
-sol.loc[:, "beta"] = 1.0
-ml.add_solute(
-  data = sol,
-  difw = 1e-9, #float, optional
-    #Ionic or molecular diffusion coefficient in free water, Dw [L2T-1].
-  difg = 0 #float, optional
-    #Ionic or molecular diffusion coefficient in gas phase, Dg [L2T-1]
-  )
+# sol = ml.get_empty_solute_df()
+# sol.loc[:, "beta"] = 1.0
+# ml.add_solute(
+#   data = sol,
+#   difw = 1e-9, #float, optional
+#     #Ionic or molecular diffusion coefficient in free water, Dw [L2T-1].
+#   difg = 0 #float, optional
+#     #Ionic or molecular diffusion coefficient in gas phase, Dg [L2T-1]
+#   )
 
 atm = pd.read_csv("atmosphere.csv", index_col=0)
 atm["cBot"] = 0.0
