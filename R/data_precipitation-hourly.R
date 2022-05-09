@@ -9,4 +9,25 @@
 #'   \item{datetime}{date time}
 #'   \item{precipitation_mm}{precipitation in mm}
 #' }
+#' @examples
+#' \dontrun{
+#' install.packages(c("dplyr", "rdwd"))
+#' library(dplyr)
+#'rdwd::updateRdwd()
+#'rdwd::findID("Braunschweig")
+#'rdwd::selectDWD(name = "Braunschweig", res = "daily")
+#'
+#'url_bs_rain <- rdwd::selectDWD(name = "Braunschweig",
+#'                               res = "hourly",
+#'                               var = "precipitation",
+#'                               per = "historical" )
+#'
+#'bs_rain <- rdwd::dataDWD(url_bs_rain)
+#'
+#'precipitation_hourly <- rdwd::dataDWD(url_bs_rain) %>%
+#'  dplyr::select(.data$MESS_DATUM, .data$R1) %>%
+#'  dplyr::rename("datetime" = "MESS_DATUM",
+#'                "precipitation_mm" = "R1")
+#'
+#'}
 "precipitation_hourly"
