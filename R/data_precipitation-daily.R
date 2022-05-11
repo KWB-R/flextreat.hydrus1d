@@ -1,8 +1,8 @@
-#' Irrigation: Monthly
+#' Precipitation: Daily
 #'
-#' Monthly irrigation values provided by AVB (in cubicmeters) downscaled to daily
-#' values (by dividing with "days_in_month" and normalised to mm/squaremeter by
-#' dividing with assumed irrigation area (44111068 m2)
+#' Hourly precipitation data downloaded from DWD for monitoring station Braunschweig
+#' (id = 662) between 1997-10-22 and 2021-12-31, which were aggregated to daily
+#' values within R
 #'
 #' @format A data.frame with 8835 rows and 3 variables:
 #' \describe{
@@ -16,7 +16,7 @@
 #'   \item{"clearwater.mmPerDay}{irrigation using "clearwater" (mm/sqm)}
 #'   )}
 #' }
-#' #' @examples
+#' @examples
 #' \dontrun{
 #' install.packages(c("dplyr", "rdwd"))
 #' library(dplyr)

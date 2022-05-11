@@ -16,8 +16,7 @@ precipitation_hourly
 }
 \description{
 Hourly precipitation data downloaded from DWD for monitoring station Braunschweig
-(id = 662) between 1997-10-22 and 2021-12-31, which were aggregated to hourly
-values within R
+(id = 662) between 1997-10-22 and 2021-12-31
 }
 \examples{
 \dontrun{
