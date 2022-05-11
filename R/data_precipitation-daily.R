@@ -16,7 +16,7 @@
 #'   \item{"clearwater.mmPerDay}{irrigation using "clearwater" (mm/sqm)}
 #'   )}
 #' }
-#' #' @examples
+#' @examples
 #' \dontrun{
 #' install.packages(c("dplyr", "rdwd"))
 #' library(dplyr)
