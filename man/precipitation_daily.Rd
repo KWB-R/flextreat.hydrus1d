@@ -52,5 +52,6 @@ precipitation_daily <- precipitation_hourly \%>\%
  dplyr::summarise(rain_mm = sum(precipitation_mm))
 
 }
+#'head(flextreat.hydrus1d::precipitation_daily)
 }
 \keyword{datasets}

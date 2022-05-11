@@ -42,4 +42,5 @@
 #'  dplyr::summarise(rain_mm = sum(precipitation_mm))
 #'
 #'}
+#'#'head(flextreat.hydrus1d::precipitation_daily)
 "precipitation_daily"

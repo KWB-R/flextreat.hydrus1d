@@ -65,5 +65,7 @@ irrigation <- read.csv2(irrigation_file) \%>\%
   tidyr::pivot_wider(names_from = .data$source,
                      values_from = .data$irrigation_mmPerDay)
 }
+head(flextreat.hydrus1d::irrigation)
+
 }
 \keyword{datasets}

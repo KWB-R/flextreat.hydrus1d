@@ -55,4 +55,6 @@
 #'   tidyr::pivot_wider(names_from = .data$source,
 #'                      values_from = .data$irrigation_mmPerDay)
 #'}
+#'head(flextreat.hydrus1d::irrigation)
+#'
 "irrigation"
