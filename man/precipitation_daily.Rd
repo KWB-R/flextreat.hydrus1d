@@ -17,7 +17,6 @@ A data.frame with 8835 rows and 3 variables:
 \item{"clearwater.mmPerDay}{irrigation using "clearwater" (mm/sqm)}
 )}
 }
-}
 \usage{
 precipitation_daily
 }
@@ -52,5 +51,6 @@ precipitation_daily <- precipitation_hourly \%>\%
  dplyr::summarise(rain_mm = sum(precipitation_mm))
 
 }
+head(flextreat.hydrus1d::precipitation_daily)
 }
 \keyword{datasets}

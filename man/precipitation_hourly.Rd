@@ -39,5 +39,6 @@ precipitation_hourly <- rdwd::dataDWD(url_bs_rain) \%>\%
                "precipitation_mm" = "R1")
 
 }
+head(flextreat.hydrus1d::precipitation_hourly)
 }
 \keyword{datasets}

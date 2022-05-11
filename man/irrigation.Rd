@@ -17,7 +17,6 @@ A data.frame with 8835 rows and 3 variables:
 \item{"clearwater.mmPerDay}{irrigation using "clearwater" (mm/sqm)}
 )}
 }
-}
 \usage{
 irrigation
 }
@@ -65,5 +64,7 @@ irrigation <- read.csv2(irrigation_file) \%>\%
   tidyr::pivot_wider(names_from = .data$source,
                      values_from = .data$irrigation_mmPerDay)
 }
+head(flextreat.hydrus1d::irrigation)
+
 }
 \keyword{datasets}

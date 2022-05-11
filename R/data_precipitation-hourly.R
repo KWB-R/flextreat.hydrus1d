@@ -29,4 +29,5 @@
 #'                "precipitation_mm" = "R1")
 #'
 #'}
+#'head(flextreat.hydrus1d::precipitation_hourly)
 "precipitation_hourly"

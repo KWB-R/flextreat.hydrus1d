@@ -15,7 +15,6 @@
 #'   \item{"groundwater.mmPerDay}{irrigation using "groundwater" (mm/sqm)}
 #'   \item{"clearwater.mmPerDay}{irrigation using "clearwater" (mm/sqm)}
 #'   )}
-#' }
 #' @examples
 #' \dontrun{
 #' install.packages(c("dplyr", "rdwd"))
@@ -42,4 +41,5 @@
 #'  dplyr::summarise(rain_mm = sum(precipitation_mm))
 #'
 #'}
+#'head(flextreat.hydrus1d::precipitation_daily)
 "precipitation_daily"

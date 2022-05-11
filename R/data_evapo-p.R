@@ -31,4 +31,5 @@
 #' from = "201701",
 #' to = "202012"
 #' )}
+#' head(flextreat.hydrus1d::evapo_p)
 "evapo_p"
