@@ -21,10 +21,17 @@ Depends:
     R (>= 2.10)
 Imports:
     archive,
+    dplyr,
     fs,
+    ggplot2,
+    magrittr,
     kwb.utils,
     pkgbuild,
-    stringr
+    rlang,
+    stringr,
+    tibble,
+    tidyr,
+    tidyselect
 Suggests: 
     knitr,
     covr,
