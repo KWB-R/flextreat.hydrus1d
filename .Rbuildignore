@@ -8,3 +8,4 @@
 ^codecov\.yml$
 ^index\.md$
 ^README\.md$
+^R\\\.create_r_package_from_scratch\.R
