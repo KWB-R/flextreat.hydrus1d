@@ -15,3 +15,9 @@ select hydrologic years
 \description{
 Select hydrologic years
 }
+\examples{
+atm <- prepare_atmosphere_data()
+atm_selected <- select_hydrologic_years(atm)
+head(atm_selected)
+tail(atm_selected)
+}

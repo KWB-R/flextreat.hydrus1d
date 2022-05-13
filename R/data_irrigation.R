@@ -18,7 +18,7 @@
 #' @examples
 #' \dontrun{
 #' install.packages(c("dplyr", "tidyr"))
-#' irrigation_file <- system.file("extdata/Beregnungsmengen_AVB.csv",
+#' irrigation_file <- system.file("extdata/input-data/Beregnungsmengen_AVB.csv",
 #' package = "flextreat.hydrus1d")
 #'
 #' irrigation_area <- rgdal::readOGR(dsn = shape_file)

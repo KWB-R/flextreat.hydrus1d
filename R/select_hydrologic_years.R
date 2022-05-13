@@ -5,6 +5,11 @@
 #' @return select hydrologic years
 #' @export
 #' @importFrom stringr str_detect
+#' @examples
+#' atm <- prepare_atmosphere_data()
+#' atm_selected <- select_hydrologic_years(atm)
+#' head(atm_selected)
+#' tail(atm_selected)
 
 select_hydrologic_years <- function(atm = prepare_atmosphere_data()) {
 
