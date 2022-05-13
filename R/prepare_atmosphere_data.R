@@ -13,7 +13,7 @@
 #'
 prepare_atmosphere_data <- function()
 {
-  irri <- irrigation %>%
+  irri <- flextreat.hydrus1d::irrigation %>%
     dplyr::mutate(date = .data$date_end) %>%
     dplyr::select(- tidyselect::all_of(c(
       "year", "month", "days_in_month", "date_start", "date_end"
@@ -32,11 +32,11 @@ prepare_atmosphere_data <- function()
       .direction = "up"
     ) %>%
     dplyr::left_join(
-      precipitation_daily,
+      flextreat.hydrus1d::precipitation_daily,
       by = "date"
     ) %>%
     dplyr::left_join(
-      y =  evapo_p %>%
+      y =  flextreat.hydrus1d::evapo_p %>%
         dplyr::select(.data$date, .data$mean) %>%
         dplyr::rename("evapo_p_mean_mm" = .data$mean),
       by = "date"

@@ -14,8 +14,6 @@
 prepare_atmosphere <- function(atm,
                                defaults = kwb.hydrus1d::defaults_atmosphere()) {
 
-atm_headers <- c("tAtm", "Prec", "rSoil", "rRoot", "hCritA", "rB", "hB", "ht",
-                 "tTop", "tBot", "Ampl", "cTop", "cBot", "RootDepth")
 
 inputs <- atm %>%
   dplyr::mutate(tAtm = dplyr::row_number(),
