@@ -8,10 +8,16 @@
 
 select_hydrologic_years <- function(atm = prepare_atmosphere_data()) {
 
-  start <- min(which(stringr::str_detect(atm$date, "-05-01")))
-  end <- max(which(stringr::str_detect(atm$date, "-10-30")))
+  which_matches <- function(pattern) {
 
-  atm[start:end,]
+    matches <- stringr::str_detect(atm$date, pattern)
 
+    if (! any(matches)) {
+      stop("Could not find pattern '", pattern, "' in column 'date'")
+    }
 
+    which(matches)
+  }
+
+  atm[min(which_matches("-05-01")):max(which_matches("-10-30")), ]
 }
