@@ -15,6 +15,14 @@ knitr::opts_chunk$set(
 
 ```
 
+This workflow is based on using the python package `phydrus` which was developed
+for [HYDRUS1D v4.08](https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697) 
+and is not compatible with the last official release of [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads). In order 
+to overcome this issue a own R package [kwb.hydrus1d]() is currently developed that 
+is compatible with the latest `HYDRUS1D` version. 
+
+The workflow below is thus out-of-date and only kept for historical purposes. 
+
 ## Install R Package
 
 ```{r eval=FALSE}
