@@ -22,8 +22,8 @@ inputs <- atm %>%
                 clearwater.mmPerDay = tidyr::replace_na(.data$clearwater.mmPerDay, 0),
                 evapo_p_mean_mm = tidyr::replace_na(.data$evapo_p_mean_mm, 0)) %>%
   dplyr::mutate(tAtm = dplyr::row_number(),
-                Prec = .data$rain_mm + .data$groundwater.mmPerDay + .data$clearwater.mmPerDay) %>%
-  dplyr::rename(rSoil = .data$evapo_p_mean_mm) %>%
+                Prec = (.data$rain_mm + .data$groundwater.mmPerDay + .data$clearwater.mmPerDay)/10) %>%
+  dplyr::rename(rSoil = .data$evapo_p_mean_mm/10) %>%
   dplyr::select(tidyselect::all_of(c("tAtm", "Prec", "rSoil")))
 
 
