@@ -31,12 +31,16 @@ fs::file_copy(path = exe_path,
               new_path = fs::path_abs(target_path)
               )
 
-writeLines(fs::path_abs(sprintf("%s/%s\n",
-                   target_dir,
-                   "test")),
+model_dir <- fs::path_abs(sprintf("%s/%s\n",
+                                  target_dir,
+                                  "test"))
+
+writeLines(model_dir,
            fs::path_abs(sprintf("%s/LEVEL_01.DIR",
                    target_dir)))
 shell(cmd = sprintf("cd %s && %s",
                     fs::path_abs(target_dir),
                     exe_name),
       intern = FALSE)
+
+a_level <- hydrusR::read.alevel.out(project.path = file.path(target_dir, "test"))
