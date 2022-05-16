@@ -43,4 +43,4 @@ shell(cmd = sprintf("cd %s && %s",
                     exe_name),
       intern = FALSE)
 
-a_level <- hydrusR::read.alevel.out(project.path = file.path(target_dir, "test"))
+a_level <- kwb.hydrus1d::read_alevel(file.path(target_dir, "test/A_LEVEL.out"))

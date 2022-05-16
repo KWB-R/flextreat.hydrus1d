@@ -1,0 +1,47 @@
+---
+title: "Modelling with R"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Modelling with R}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+```
+
+This workflow is based on using the R package [kwb.hydrus1d](https://kwb-r.github.io/kwb.hydrus1d/), which is compatible with 
+the last official release of [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads). The 
+development of this new `R package` was necessary, due to the fact that already 
+available model wrappers were developed for outdated `HYDRUS1D` versions (e.g. 
+python package [phydrus](https://github.com/phydrus/phydrus) requires [HYDRUS1D v4.08](https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697)) 
+and/or are not well maintained (e.g. open issues/pull requests for R package 
+[hydrusR](https://github.com/shoebodh/hydrusR)). 
+
+The workflow below describes all the steps required for:
+
+1. **Modifying** (i.e. `atmospheric` input data defined in file `ATMOSPHERE.in`) 
+an already pre-prepared `HYDRUS1D` model (using the `HYDRUS1D GUI`)
+
+2. **Running** it from within `R`  by using the command line (`cmd`) and 
+
+3. **Importing** and **analysing** the `HYDRUS1D` results within R.
+
+
+
+## Install R Package
+
+```{r eval=FALSE}
+# Enable this universe
+options(repos = c(
+  kwbr = 'https://kwb-r.r-universe.dev',
+  CRAN = 'https://cloud.r-project.org'))
+# Install R package
+install.packages('flextreat.hydrus1d')
+```
+

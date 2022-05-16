@@ -18,10 +18,13 @@ knitr::opts_chunk$set(
 This workflow is based on using the python package `phydrus` which was developed
 for [HYDRUS1D v4.08](https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697) 
 and is not compatible with the last official release of [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads). In order 
-to overcome this issue a own R package [kwb.hydrus1d]() is currently developed that 
-is compatible with the latest `HYDRUS1D` version. 
+to overcome this issue the R package [kwb.hydrus1d](https://kwb-r.github.io/kwb.hydrus1d/) 
+is currently developed by Kompetenzzentrum Wasser Berlin gGmbH, which will be 
+compatible with the last offical [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads) release. 
 
-The workflow below is thus out-of-date and only kept for historical purposes. 
+The workflow below is thus out-of-date and only kept for historical purposes. For 
+the current workflow using [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads) please 
+checkout the [Modelling with R](../articles/modelling_r.html) vignette.
 
 ## Install R Package
 
@@ -62,14 +65,16 @@ tdir <- tempdir()
 fs::dir_create(tdir)
 env_yml <- kwb.python::conda_export(condaenv = env, export_dir = tdir)
 file.copy(env_yml, basename(env_yml), overwrite = TRUE)
-env_yml <- basename(env_yml)
+
+#For reproducing the Python environment used for the `Hydrus1D` modelling you can 
+#check the `env_yml` file. Keep in mind that `phydrus` was developed
+#for the last open-source release (`hydrus v4.0.8`) and is not compatible with the 
+#latest `hydrus v4.17.0140` (see: #https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
+env_yml                           
+
 data(atmosphere)
 write.csv(atmosphere, file = "atmosphere.csv", row.names = FALSE)
 ```
-For reproducing the Python environment used for the `Hydrus1D` modelling you can 
-download the [`r env_yml`](../`r env_yml`). Keep in mind that `phydrus` was developed
-for the last open-source release (`hydrus v4.0.8`) and is not compatible with the 
-lastest `hydrus v4.17.0140` (see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
 
 
 ```{python model_test, eval=FALSE}
