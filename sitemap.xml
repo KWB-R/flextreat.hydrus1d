@@ -16,6 +16,12 @@
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling.html</loc>
   </url>
   <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_python.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_r.html</loc>
+  </url>
+  <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/authors.html</loc>
   </url>
   <url>
@@ -25,9 +31,45 @@
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/news/index.html</loc>
   </url>
   <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/atmosphere.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/create_hydrus_exe.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/create_monthly_atm.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/evapo_p.html</loc>
+  </url>
+  <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/index.html</loc>
   </url>
   <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/irrigation.html</loc>
+  </url>
+  <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/materials.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/pipe.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_monthly_atm.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/precipitation_daily.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/precipitation_hourly.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/prepare_atmosphere.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/prepare_atmosphere_data.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/select_hydrologic_years.html</loc>
   </url>
 </urlset>
