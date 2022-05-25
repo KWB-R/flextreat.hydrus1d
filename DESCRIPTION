@@ -26,10 +26,12 @@ Imports:
     ggplot2,
     lubridate,
     magrittr,
+    kwb.hydrus1d,
     kwb.utils,
     pkgbuild,
     rlang,
     stringr,
+    soilDB,
     tibble,
     tidyr,
     tidyselect
@@ -39,6 +41,7 @@ Suggests:
     kwb.python,
     rmarkdown
 Remotes: 
+    github::kwb-r/kwb.hydrus1d,
     github::kwb-r/kwb.python,
     github::kwb-r/kwb.utils
 Encoding: UTF-8

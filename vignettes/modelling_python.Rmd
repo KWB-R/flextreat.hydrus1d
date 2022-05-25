@@ -15,6 +15,17 @@ knitr::opts_chunk$set(
 
 ```
 
+This workflow is based on using the python package `phydrus` which was developed
+for [HYDRUS1D v4.08](https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697) 
+and is not compatible with the last official release of [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads). In order 
+to overcome this issue the R package [kwb.hydrus1d](https://kwb-r.github.io/kwb.hydrus1d/) 
+is currently developed by Kompetenzzentrum Wasser Berlin gGmbH, which will be 
+compatible with the last offical [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads) release. 
+
+The workflow below is thus out-of-date and only kept for historical purposes. For 
+the current workflow using [HYDRUS1D v4.17.0140](https://www.pc-progress.com/en/Default.aspx?H1d-downloads) please 
+checkout the [Modelling with R](../articles/modelling_r.html) vignette.
+
 ## Install R Package
 
 ```{r eval=FALSE}
@@ -29,7 +40,7 @@ install.packages('flextreat.hydrus1d')
 
 ## Install Phython Package phydrus
 
-```{r setup}
+```{r setup, eval=FALSE}
 
 is_windows <- Sys.info()[1] == "Windows"
 
@@ -54,17 +65,19 @@ tdir <- tempdir()
 fs::dir_create(tdir)
 env_yml <- kwb.python::conda_export(condaenv = env, export_dir = tdir)
 file.copy(env_yml, basename(env_yml), overwrite = TRUE)
-env_yml <- basename(env_yml)
+
+#For reproducing the Python environment used for the `Hydrus1D` modelling you can 
+#check the `env_yml` file. Keep in mind that `phydrus` was developed
+#for the last open-source release (`hydrus v4.0.8`) and is not compatible with the 
+#latest `hydrus v4.17.0140` (see: #https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
+env_yml                           
+
 data(atmosphere)
 write.csv(atmosphere, file = "atmosphere.csv", row.names = FALSE)
 ```
-For reproducing the Python environment used for the `Hydrus1D` modelling you can 
-download the [`r env_yml`](../`r env_yml`). Keep in mind that `phydrus` was developed
-for the last open-source release (`hydrus v4.0.8`) and is not compatible with the 
-lastest `hydrus v4.17.0140` (see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697).
 
 
-```{python model_test, eval = is_windows}
+```{python model_test, eval=FALSE}
 
 # Import the necessary modules
 import os
@@ -230,456 +243,7 @@ ml.write_input()
 
 ```
 
-```{python run_model, eval = is_windows}
-from datetime import datetime
-start_time = datetime.now()
-# Run simulation
-ml.simulate()
-end_time = datetime.now()
-print('Duration: {}'.format(end_time - start_time))
-
-```
-                    
-```{python define_model, echo = FALSE, eval=FALSE}                    
-times = ml.add_time_info(
-  # tinit: int, optional
-  #     Initial time of the simulation [T].
-  tinit = 0, 
-  # tmax: int, optional
-  #     Final time of the simulation [T].
-  tmax = 730, 
-  # dt: float, optional
-  #     Initial time increment [T].
-  dt = 0.01,
-  # dtmin: float, optional
-  #     Minimum permitted time increment [T].
-  dtmin = 1e-05, 
-  # dtmax: float, optional
-  #     Maximum permitted time increment [T].
-  dtmax=5,
-  # print_times: boolean, optional
-  #     Set to true. if information of pressure head, water contents,
-  #     temperatures, and concentrations in observation nodes, and
-  #     the water and solute fluxes is to be printed at a constant
-  #     time interval of 1 time unit.  
-  print_times = True,
-  # printinit: int, optional
-  #     First specified print-time [T].
-  printinit = None,
-  # printmax:int, optional
-  #     Last specified print-time [T].
-  printmax = None,
-    # dtprint: int, optional
-  #     Specified time increment for print times [T].
-  dtprint = None,
-  # nsteps: str, optional
-  #     Number of required time steps between the first specified
-  #     print-time (printinit) and the final specified
-  #     print-time (printmax)".
-  nsteps = None, 
-  # from_atmo: boolean, optional.
-  #     Set to true if time information is determined from the
-  #     atmospheric boundary condition input data.
-  from_atmo = False,
-  # print_array: array of float, optional
-  #     Array of specified print-times.
-  print_array = None
-  )
-
-###############################################################################
-# 1 Add the process water transport
-###############################################################################
-
-ml.add_waterflow(
-  # model: int, optional
-  #   Soil hydraulic properties model:
-  #   0 = van Genuchten"s [1980] model with 6 parameters.
-  #   1 = modified van Genuchten"s model  with 10 parameters [Vogel
-  #   and Císlerová, 1988].
-  #   2 = Brooks and Corey"s [1964] model with 6 parameters.
-  #   3 = van Genuchten"s [1980] model with air-entry value of -2 cm
-  #   and with 6 parameters.
-  #   4 = Kosugi’s [1996] model with 6 parameters.
-  #   5 = dual-porosity model of Durner [1994] with 9 parameters.
-  #   6 = dual-porosity system with transfer proportional to the
-  #   effective saturation (9 parameters).
-  #   7 = dual-porosity system with transfer proportional to the
-  #   pressure head (11 parameters).
-  #   9 = dual-permeability system with transfer proportional to the
-  #   pressure head (17 parameters)
-  model = 0,
-  # maxit: int, optional
-  #   Maximum number of iterations allowed during any time step.
-  maxit = 10,
-  # tolth: float, optional
-  #   Absolute water content tolerance for nodes in the unsaturated part
-  #   of the flow region [-]. TolTh represents the maximum desired
-  #   absolute change in the value of the water content, θ, between
-  #   two successive iterations during a particular time step.
-  tolth = 1E-3, 
-  # tolh: float, optional
-  #   Absolute pressure head tolerance for nodes in the saturated part of
-  #   the flow region [L] (its recommended value is 0.1 cm). TolH
-  #   represents the maximum desired absolute change in the value of the
-  #   pressure head, h, between two successive iterations during a
-  #   particular time step.
-  tolh = 0.1, 
-  # ha: float, optional
-  #   Absolute value of the upper limit [L] of the pressure head interval
-  #   below which a table of hydraulic properties will be generated
-  #   internally for each material.
-  ha = 1E-6,
-  # hb: float, optional
-  #   Absolute value of the lower limit [L] of the pressure head interval
-  #   for which a table of hydraulic properties will be generated
-  #   internally for each material.
-  hb = 1E4,
-  # linitw: bool, optional
-  #   Set to true if the initial condition is given in terms of the
-  #   water content. Set to False if given in terms of pressure head.
-  linitw = False, 
-  # top_bc: int, optional
-  #     Upper Boundary Condition:
-  #     0 = Constant Pressure Head.
-  #     1 = Constant Flux.
-  #     2 = Atmospheric Boundary Condition with Surface Layer.
-  #     3 = Atmospheric Boundary Condition with Surface Run Off.
-  #     4 = Variable Pressure Head.
-  #     5 = Variable Pressure Head/Flux.  
-  top_bc=3, 
-  # bot_bc: int, optional
-  #     Lower Boundary Condition:
-  #     0 = Constant Pressure Head.
-  #     1 = Constant Flux.
-  #     2 = Variable Pressure Head.
-  #     3 = Variable Flux.
-  #     4 = Free Drainage.
-  #     5 = Deep Drainage.
-  #     6 = Seepage Face.
-  #     7 = Horizontal Drains.
-  bot_bc = 4, # 4: free drainage 
-  # hseep: float, optional
-  #     Pressure head (i.e., 0) that initiates flow over the seepage face
-  #     bottom boundary.
-  hseep = 0,
-  # rtop: float, optional
-  #     Prescribed top flux [LT-1] (in case of a Dirichlet BC set this
-  #     variable equal to zero).
-  rtop = None, 
-  # rbot: float, optional
-  #     Prescribed bottom flux [LT-1] (in case of a Dirichlet BC set this
-  #     variable equal to zero).
-  rbot = None, 
-  # rroot: float, optional
-  #     Prescribed potential transpiration rate [LT-1] (if no transpiration
-  #     occurs or if transpiration is variable in time set this variable
-  #     equal to zero).
-  rroot = None, 
-  # gw_level: float, optional
-  #     Reference position of the groundwater table (e.g., the
-  #     x-coordinate of the soil surface)
-  gw_level = None,
-  # aqh: float, optional
-  #     Value of the parameter Aqh [LT-1] in the q(GWL)-relationship.
-  aqh = None, 
-  # bqh: float, optional
-  #     Value of the parameter Bqh [L-1] in the q(GWL)-relationship.
-  bqh = None,
-  # hysteresis: int, optional
-  #     Hysteresis in the soil hydraulic properties:
-  #     0 = No hysteresis.
-  #     1 = Hysteresis in the retention curve only.
-  #     2 = Hysteresis in both the retention and hydraulic conductivity
-  #     functions.
-  #     3 = Hysteresis using Robert Lenhard’s model [Lenhard et al.,
-  #     1991; Lenhard and Parker, 1992]. (Not available with major ion
-  #     chemistry module.)
-  hysteresis = 0,
-  # ikappa: int, optional
-  #     Set to -1 if the initial condition is to be calculated from the
-  #     main drying branch. Set to 1 if the initial condition is to be
-  #     calculated from the main wetting branch.
-  ikappa = -1 
-  )
-
-###############################################################################
-# 2 Add the process solute transport
-###############################################################################
-
-ml.add_solute_transport(
-  # model: int, optional
-  #     Code describing type of nonequilibrium for solute transport:
-  #     0 = equilibrium solute transport (Default)
-  #     1 = one-site sorption model (chemical nonequilibrium)
-  #     2 = two-site sorption model (chemical nonequilibrium)
-  #     3 = two kinetic sorption sites model (attachment/detachment;
-  #     chemical nonequilibrium). This model is often used for particle
-  #     (viruses, colloids, bacteria) transport.
-  #     4 = two kinetic sorption sites model (attachment/detachment) (
-  #     chemical nonequilibrium). Attachment coefficients are calculated
-  #     using filtration theory.
-  #     5 = dual-porosity model (mobile-immobile regions; physical
-  #     nonequilibrium).
-  #     6 = dual-porosity model (mobile-immobile regions) with two-site
-  #     sorption in the mobile zone (physical and chemical nonequilibrium).
-  #     7 = dual-permeability model (physical nonequilibrium).
-  #     8 = dual-permeability model with either an immobile region in the
-  #     matrix domain (physical nonequilibrium) or with two-site
-  #     sorption in both domains (physical and chemical nonequilibrium).
-  model = 0, 
-  # epsi: float, optional
-  #     Temporal weighing coefficient. 0.0 for an explicit scheme (
-  #     Default). 0.5 for a Crank-Nicholson implicit scheme. =1.0 for
-  #     a fully implicit scheme.  
-  epsi = 0.5, 
-  # lupw: bool, optional
-  #     true if upstream weighing formulation is to be used. False if
-  #     the original Galerkin formulation is to be used.
-  lupw = True, 
-  # lartd: bool, optional
-  #   true if artificial dispersion is to be added in order to fulfill
-  #   the stability criterion PeCr (see Section 8.4.4), else False.
-  lartd = False,
-  #ltdep: bool, optional
-  # true if at least one transport or reaction coefficient (ChPar) is
-  # temperature dependent, else False. If ltdep=true, then all
-  # values of ChPar(i,M) should be specified at a reference
-  # temperature Tr=20 degrees celsius.
-  ltdep = False, 
-  # ctola: float, optional
-  #   Absolute concentration tolerance [ML-3], the value is dependent
-  #   on the units used (set equal to zero if nonlinear adsorption is
-  #   not considered).
-  ctola = 0, 
-  # ctolr: float, optional
-  #     Relative concentration tolerance [-] (set equal to zero if
-  #     nonlinear adsorption is not considered).
-  ctolr = 0, 
-  # maxit: int, optional
-  #    Maximum number of iterations allowed during any time step for
-  #    solute transport - usually 20 (set equal to zero if nonlinear
-  #    adsorption is not considered).
-  maxit = 0, 
-  # pecr: float optional
-  #     Stability criteria. Set to zero when lUpW = true
-  pecr = 2,
-  # ltort: bool, optional
-  #   true if the tortuosity factor [Millington and Quirk, 1961] is to be
-  #   used. False if the tortuosity factor is assumed to be equal to one.
-  ltort = True, 
-  # lwatdep: bool, optional
-  #   True if at least one degradation coefficient (ChPar) is water
-  #   content dependent.
-  lwatdep = False, 
-  # top_bc: int, optional
-  #   Code which specifies the type of upper boundary condition
-  #   1 = Dirichlet boundary condition,
-  #   -1 = Cauchy boundary condition.
-  #   -2 = a special type of boundary condition for volatile solutes
-  #   as described by equation (3.46).
-  top_bc = -1, 
-  # bot_bc: int, optional
-  #   Code which specifies the type of lower boundary condition:
-  #   1 = Dirichlet boundary condition,
-  #   0 = continuous concentration profile,
-  #   -1 = Cauchy boundary condition.
-  bot_bc = 0,
-  # dsurf: float, optional
-  #   Thickness of the stagnant boundary layer, d [L]. Only when
-  #   kTopCh=-2.
-  dsurf = None, 
-  # catm: float, optional
-  #     Concentration above the stagnant boundary layer, g_atm [ML-3].
-  #     Only when kTopCh=-2.
-  catm = None,
-  # tpulse: float, optional
-  #   Time duration of the concentration pulse [T].
-  tpulse = 1)
-
-###############################################################################
-# 3 Add soil characteristics & profile
-###############################################################################
-
-m = ml.get_empty_material_df(n = 2)
-
-m.loc[0:2] = [[0.0, 0.3382, 0.0111, 1.4737, 13, 0.5, 1.5, 30.0, 1, 0],
-              [0.0, 0.3579, 0.0145, 1.5234, 50, 0.5, 1.5, 30.0, 1, 0]]
-
-ml.add_material(material = m)
-
-bottom = [-30, -100] # Depth of the soil column
-ihead = -500  # Determine initial pressure head
-
-profile = ps.create_profile(
-  # top: float, optional
-  #   Top of the soil column.
-  top = 0,
-  # bot: float or list of float, optional
-  #   Bottom of the soil column. If a list is provided, multiple layers are
-  #   created and other arguments need to be of the same length (e.g. mat).
-  bot = bottom,
-  # dx: float, optional
-  #     Size of each grid cell. Default 0.1 meter.
-  dx = 1, 
-  # h: float, optional
-  #   Initial values of the pressure head.
-  h = ihead,
-  # lay: int or list of int, optional
-  #   Subregion number (for mass balance calculations).
-  lay = [1, 2],
-  # mat: int or list of int, optional
-  #   Material number (for heterogeneity).
-  mat = [1, 2], 
-  # beta: float or list of float, optional
-  #   Value of the water uptake distribution, b(x) [L-1], in the soil root
-  #   zone at node n. Set Beta(n) equal to zero if node n lies outside the
-  #   root zone.
-  beta = 0,
-  # ah: float or list of float, optional
-  #   Scaling factor for the pressure head (Axz in profile.dat).
-  ah = 1.0,
-  # ak: float or list of float, optional
-  #      Scaling factor the hydraulic conductivity (Bxz in profile.dat).
-  ak = 1.0,
-  # ath: float or list of float, optional
-  #     Scaling factor the the water content (Dxz in profile.dat).
-  ath = 1.0,
-  # temp: float, optional
-  #     Initial value of the temperature at node n [oC] (do not specify if
-  #     both lTemp or lChem are equal to .False.; if lTemp=.False. and
-  #     lChem=.True. then set equal to 0 or any other initial value to be used
-  #     later for temperature dependent water flow and solute transport).
-  temp = 20.0,
-  # conc: float, optional
-  conc = None,
-  # sconc: float, optional
-  sconc = None)
-
-profile
-
-ml.add_profile(profile)
-
-
-###############################################################################
-# 4 Add observation nodes
-###############################################################################
-
-ml.add_obs_nodes(depths = [-30, -60])
-
-###############################################################################
-# 5 Add solute 
-###############################################################################
-
-sol = ml.get_empty_solute_df()
-sol.loc[:, "beta"] = 1.0  # Required when no equilibrium is chosen. 
-
-ml.add_solute(data = sol,
-    # difw: float, optional
-    #     Ionic or molecular diffusion coefficient in free water, Dw [L2T-1].
-    difw = 1e-9,
-    # difg: float, optional
-    #     Ionic or molecular diffusion coefficient in gas phase, Dg [L2T-1].
-    difg = 0,
-    # top_conc: float, optional
-    #   Concentration of the upper boundary, or concentration of the
-    #   incoming fluid [ML-3].
-    top_conc = 0,
-    # bot_conc: float, optional
-    #   Concentration of the lower boundary, or concentration of the
-    #   incoming fluid [ML-3].
-    bot_conc = 0
-    )
-    
-ml.solutes
-
-###############################################################################
-# 5 Add atmospheric boundary condition  
-###############################################################################
-atm = pd.read_csv("atmosphere.csv", index_col=0)
-atm["cBot"] = 0.0
-atm["cTop"] = 0.0
-atm.loc[0, "cTop"] = 1.0
-ml.add_atmospheric_bc(atm, hcrits=0)
-
-ml.add_atmospheric_bc(
-  # atmosphere: pandas.DataFrame
-  #     Pandas DataFrame with at least the following columns: tAtm,
-  #     Prec, rSoil, rRoot, hCritA, rB, hB, hT, tTop, tBot, and Ampl.
-  atmosphere = atm, 
-  # ldailyvar: bool, optional
-  #     True if HYDRUS-1D is to generate daily variations in evaporation
-  #     and transpiration. False otherwise.
-  ldailyvar = False,
-  # lsinusvar: bool, optional
-  #     True if HYDRUS-1D is to generate sinusoidal variations in
-  #     precipitation. False otherwise.
-  lsinusvar = False, 
-  # llai: bool, optional
-  #     Boolean indicating that potential evapotranspiration is
-  #     to be divided into potential evaporation and potential
-  #     transpiration using eq. (2.75) of the manual.
-  llai = False, 
-  # rextinct: float, optional
-  #     A constant for the radiation extinction by the canopy
-  #     (rExtinct=0.463) [-]. only used when lLai is True.
-  rextinct = 0.463, 
-  # hcrits: float, optional
-  #   Maximum allowed pressure head at the soil surface [L]. Default is
-  #   1e+30.
-  hcrits = 0,
-  # tatm: float, optional
-  #     Time for which the i-th data record is provided [T].
-  tatm = 0, 
-  # prec: float, optional
-  #     Precipitation rate [LT-1] (in absolute value).
-  prec = 0, 
-  # rsoil: float, optional
-  #     Potential evaporation rate [LT-1] (in absolute value). rSoil(i) is
-  #     interpreted as KodTop when a time variable Dirichlet or Neumann
-  #     boundary condition is specified.
-  rsoil = 0,
-  # rroot: float, optional
-  #     Potential transpiration rate [LT-1] (in absolute value).
-   rroot = 0, 
-  # hcrita: float, optional
-  #     Absolute value of the minimum allowed pressure head at the soil
-  #     surface [L].
-  hcrita = 100000.0, 
-  # rb: float, optional
-  #     Bottom flux [LT-1] (set equal to 0 if KodBot is positive, or if
-  #     one of the logical variables qGWLF, FreeD or SeepF is .True.).
-  rb = 0,
-  # hb: float, optional
-  #     Groundwater level [L], or any other prescribed pressure head
-  #     boundary condition as indicated by a positive value of KodBot
-  #     (set equal to 0 if KodBot is negative, or if one of the logical
-  #     variables qGWLF, FreeD or SeepF is .True.).
-  hb = 0, 
-  # ht: float, optional
-  #     Prescribed pressure head [L] at the surface (set equal to 0 if
-  #     KodBot is negative).
-  ht=0, 
-  # ttop: float, optional
-  #     Soil surface temperature [oC] (omit if both lTemp and lChem are
-  #     equal to .False.).
-  ttop=0, 
-  # tbot: float, optional
-  #     Soil temperature at the bottom of the soil profile [oC] (omit if
-  #     both lTemp and lChem are equal to .False., set equal to zero if
-  #     kBotT=0).
-  tbot=0,
-  # ampl: float, optional
-  #     Temperature amplitude at the soil surface [K] (omit if both lTemp
-  #     and lChem are equal to .False.).
-  ampl=0
-)
-
-ml.atmosphere
-ml.write_input()
-
-```
-
-```{python eval = FALSE, echo = FALSE}
+```{python run_model, eval = FALSE}
 from datetime import datetime
 start_time = datetime.now()
 # Run simulation

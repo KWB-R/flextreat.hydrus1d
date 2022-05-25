@@ -37,7 +37,7 @@ usethis::use_data(precipitation_daily)
 remotes::install_github("kwb-r/kwb.dwd@dev")
 
 
-shape_file <- system.file("extdata/gis/Abwasserverregnungsgebiet.shp",
+shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
                           package = "flextreat.hydrus1d")
 
 # Only data of full months can currently be read!
@@ -51,7 +51,7 @@ evapo_p <- kwb.dwd::read_daily_data_over_shape(
 usethis::use_data(evapo_p)
 
 
-irrigation_file <- system.file("extdata/Beregnungsmengen_AVB.csv",
+irrigation_file <- system.file("extdata/input-data/Beregnungsmengen_AVB.csv",
                           package = "flextreat.hydrus1d")
 
 

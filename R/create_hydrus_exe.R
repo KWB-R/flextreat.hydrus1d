@@ -8,52 +8,53 @@
 #' @importFrom kwb.utils windowsPath
 #' @importFrom stringr str_replace
 #' @importFrom pkgbuild rtools_path
-create_hydrus_exe <- function() {
+create_hydrus_exe <- function()
+{
+  is_windows <- Sys.info()[1] == "Windows"
 
-  is_windows = Sys.info()[1] == "Windows"
+  if (! is_windows) {
 
-  if(is_windows) {
-    ### Compile Hydrus1D v4.08 executable
-    ### see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697
+    system2(paste0("cd ", file.path(tdir, "source\n"), "make -f makefile"))
 
-    tdir <- file.path(getwd(), "hydrus1d")
-
-    #Download source code for latest open-source Hydrus1D release
-    archive::archive_extract(archive = "https://github.com/phydrus/source_code/archive/refs/heads/main.zip",
-                             dir = tdir,
-                             strip_components = 1
-    )
-
-    fs::file_copy(path = file.path(tdir, "make.bat"),
-                  new_path = file.path(tdir, "source/make.bat"),
-                  overwrite = TRUE
-    )
-
-    fs::file_copy(path = file.path(tdir, "Makefile"),
-                  new_path = file.path(tdir, "source/Makefile"),
-                  overwrite = TRUE
-    )
-
-    binpath <- kwb.utils::windowsPath(stringr::str_replace(pkgbuild::rtools_path(),
-                                                           "usr",
-                                                           "mingw64"))
-
-    if(dir.exists(binpath)) {
-      cmd <- paste0("set PATH=%PATH%;", binpath, "\n",
-                    "cd ", kwb.utils::windowsPath(file.path(tdir, "source\n")),
-                    "make.bat")
-      batch_name <- "compile_hydrus1d.bat"
-      writeLines(cmd, batch_name)
-      shell(cmd = batch_name)
-      return(file.path(tdir, "source/hydrus.exe"))
-    } else {
-      stop("Rtools not installed")
-    }
-  } else {
-    cmd <- paste0("cd ", file.path(tdir, "source\n"),
-                  "make -f makefile")
-    system2(command = cmd)
     return(file.path(tdir, "source/hydrus"))
   }
 
+  ### Compile Hydrus1D v4.08 executable
+  ### see: https://github.com/phydrus/source_code/issues/1#issuecomment-1034675697
+
+  tdir <- file.path(getwd(), "hydrus1d")
+
+  #Download source code for latest open-source Hydrus1D release
+  url <- "https://github.com/phydrus/source_code/archive/refs/heads/main.zip"
+
+  archive::archive_extract(archive = url, dir = tdir, strip_components = 1L)
+
+  copy_or_overwrite <- function(from, to) fs::file_copy(
+    path = file.path(tdir, from),
+    new_path = file.path(tdir, to),
+    overwrite = TRUE
+  )
+
+  copy_or_overwrite("make.bat", "source/make.bat")
+  copy_or_overwrite("Makefile", "source/Makefile")
+
+  binpath <- stringr::str_replace(pkgbuild::rtools_path(), "usr", "mingw64")
+
+  if (! dir.exists(binpath)) {
+    stop("Rtools not installed")
+  }
+
+  cmd <- c(
+    paste0("set PATH=%PATH%;", kwb.utils::windowsPath(binpath)),
+    paste("cd", kwb.utils::windowsPath(file.path(tdir, "source"))),
+    "make.bat"
+  )
+
+  batch_name <- "compile_hydrus1d.bat"
+
+  writeLines(cmd, batch_name)
+
+  shell(batch_name)
+
+  file.path(tdir, "source/hydrus.exe")
 }

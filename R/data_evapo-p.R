@@ -21,7 +21,7 @@
 #' \dontrun{
 #' ### Data download
 #' remotes::install_github("kwb-r/kwb.dwd@@dev")
-#' shape_file <- system.file("extdata/gis/Abwasserverregnungsgebiet.shp",
+#' shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
 #' package = "flextreat.hydrus1d")
 #'
 #' # Only data of full months can currently be read!
