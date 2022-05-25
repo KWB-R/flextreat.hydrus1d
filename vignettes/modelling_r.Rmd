@@ -12,7 +12,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-
+is_windows <- .Platform$OS.type == "windows"
 ```
 
 This workflow is based on using the R package [kwb.hydrus1d](https://kwb-r.github.io/kwb.hydrus1d/), which is compatible with 
@@ -45,3 +45,59 @@ options(repos = c(
 install.packages('flextreat.hydrus1d')
 ```
 
+## Define Paths
+
+```{r define_paths, eval=is_windows}
+paths_list <- list(
+  exe_dir = system.file("extdata/model", package = "flextreat.hydrus1d"),
+  model_name = "test",
+  model_dir = "<exe_dir>/<model_name>",
+  atmosphere = "<model_dir>/ATMOSPH.in",
+  a_level = "<model_dir>/A_LEVEL.out",
+  t_level = "<model_dir>/T_LEVEL.out",
+  runinf = "<model_dir>/Run_Inf.out"
+)
+
+paths <- kwb.utils::resolve(paths_list)
+
+
+```
+
+## Prepare Atmosphere
+
+```{r prepare_atmosphere, eval=is_windows}
+library(flextreat.hydrus1d)
+
+atm <- flextreat.hydrus1d::prepare_atmosphere_data()
+atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
+atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm_selected)
+
+
+atmos <- kwb.hydrus1d::write_atmosphere(atm = atm_prep,
+                                        MaxAL = nrow(atm_prep))
+
+writeLines(atmos, paths$atmosphere)
+```
+
+## Run Model
+
+```{r run_model, eval=is_windows}
+exe_path <- kwb.hydrus1d::check_hydrus_exe(dir = paths$exe_dir,
+                                           skip_preinstalled = TRUE)
+kwb.hydrus1d:::run_model(model_path = paths$model_dir)
+
+```
+
+## Read Results
+
+```{r read_results, eval=is_windows}
+
+a_level <- kwb.hydrus1d::read_alevel(paths$a_level)
+a_level
+
+t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
+t_level
+
+runinf <- kwb.hydrus1d::read_runinf(paths$runinf)
+runinf
+```
