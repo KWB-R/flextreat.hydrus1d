@@ -97,7 +97,8 @@ writeLines(atmos, paths$atmosphere)
 ```{r run_model, eval=is_windows}
 exe_path <- kwb.hydrus1d::check_hydrus_exe(dir = paths$exe_dir,
                                            skip_preinstalled = TRUE)
-kwb.hydrus1d:::run_model(model_path = paths$model_dir)
+kwb.hydrus1d:::run_model(exe_path = exe_path,
+                         model_path = paths$model_dir)
 
 ```
 
