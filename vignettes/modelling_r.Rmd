@@ -63,10 +63,23 @@ paths <- kwb.utils::resolve(paths_list)
 
 ```
 
-## Prepare Atmosphere
+## Prepare Input
+
+### Soil Data
+
+```{r prepare_soils, eval=TRUE}
+library(flextreat.hydrus1d)
+### Test ROSETTA pedotransfer function 
+soilDB::ROSETTA(x = data.frame(sand = rep(93.5,4), 
+                               silt = rep(6.4,4), 
+                               clay = rep(0.1,4)),
+                 vars = c("sand", "silt", "clay"), 
+                v = "3")
+```
+
+### Atmospheric Boundary Conditons
 
 ```{r prepare_atmosphere, eval=is_windows}
-library(flextreat.hydrus1d)
 
 atm <- flextreat.hydrus1d::prepare_atmosphere_data()
 atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
