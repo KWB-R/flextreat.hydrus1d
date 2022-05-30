@@ -49,13 +49,15 @@ install.packages('flextreat.hydrus1d')
 
 ```{r define_paths, eval=is_windows}
 paths_list <- list(
-  exe_dir = system.file("extdata/model", package = "flextreat.hydrus1d"),
+  extdata = system.file("extdata", package = "flextreat.hydrus1d"),
+  exe_dir = "<extdata>/model",
   model_name = "test",
   model_dir = "<exe_dir>/<model_name>",
   atmosphere = "<model_dir>/ATMOSPH.IN",
   a_level = "<model_dir>/A_LEVEL.out",
   t_level = "<model_dir>/T_LEVEL.out",
-  runinf = "<model_dir>/Run_Inf.out"
+  runinf = "<model_dir>/Run_Inf.out",
+  soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
 )
 
 paths <- kwb.utils::resolve(paths_list)
@@ -68,13 +70,24 @@ paths <- kwb.utils::resolve(paths_list)
 ### Soil Data
 
 ```{r prepare_soils, eval=TRUE}
+
 library(flextreat.hydrus1d)
-### Test ROSETTA pedotransfer function 
-soilDB::ROSETTA(x = data.frame(sand = rep(93.5,4), 
-                               silt = rep(6.4,4), 
-                               clay = rep(0.1,4)),
-                 vars = c("sand", "silt", "clay"), 
-                v = "3")
+
+soil_dat <- readr::read_csv(paths$soil_data) %>% 
+  dplyr::mutate(sand = .data$S_prozent + .data$G_prozent, 
+                silt = .data$U_prozent, 
+                clay = round(100 - .data$sand - .data$silt,
+                                     1)) %>% 
+  dplyr::mutate(clay = dplyr::if_else(.data$clay < 0,
+                                      0, 
+                                      .data$clay)) %>% 
+  soilDB::ROSETTA(vars = c("sand", "silt", "clay"),
+                  v = "3") %>% 
+  dplyr::mutate(alpha = 10^.data$alpha,
+                npar = 10^.data$npar, 
+                ksat = 10^.data$ksat)
+
+knitr::kable(soil_dat)
 ```
 
 ### Atmospheric Boundary Conditons
