@@ -74,7 +74,11 @@ paths <- kwb.utils::resolve(paths_list)
 library(flextreat.hydrus1d)
 
 soil_dat <- readr::read_csv(paths$soil_data) %>% 
-  dplyr::mutate(sand = .data$S_prozent + .data$G_prozent, 
+  dplyr::mutate(layer_id = dplyr::if_else(.data$tiefe_cm_ende < 60, 
+                                       1, 
+                                       2),
+                thickness_cm = .data$tiefe_cm_ende - .data$tiefe_cm_start,
+                sand = .data$S_prozent + .data$G_prozent, 
                 silt = .data$U_prozent, 
                 clay = round(100 - .data$sand - .data$silt,
                                      1)) %>% 
@@ -87,7 +91,20 @@ soil_dat <- readr::read_csv(paths$soil_data) %>%
                 npar = 10^.data$npar, 
                 ksat = 10^.data$ksat)
 
+
 knitr::kable(soil_dat)
+
+soil_dat_per_layer <- soil_dat %>% 
+  dplyr::group_by(.data$layer_id) %>% 
+  dplyr::summarise(layer_thickness = max(.data$tiefe_cm_ende) - min(.data$tiefe_cm_start),
+                   theta_r = sum(.data$theta_r*.data$thickness_cm)/.data$layer_thickness,
+                   theta_s = sum(.data$theta_s*.data$thickness_cm)/.data$layer_thickness,
+                   alpha = sum(.data$alpha*.data$thickness_cm)/.data$layer_thickness,
+                   npar = sum(.data$npar*.data$thickness_cm)/.data$layer_thickness,
+                   ksat = sum(.data$ksat*.data$thickness_cm)/.data$layer_thickness)
+
+
+knitr::kable(soil_dat_per_layer)
 ```
 
 ### Atmospheric Boundary Conditons
