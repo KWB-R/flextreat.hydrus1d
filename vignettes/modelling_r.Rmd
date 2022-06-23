@@ -1,5 +1,6 @@
 ---
 title: "Modelling with R"
+author: "Michael Rustler"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Modelling with R}
@@ -25,7 +26,9 @@ and/or are not well maintained (e.g. open issues/pull requests for R package
 
 The workflow below describes all the steps required for:
 
-1. **Modifying** (i.e. `atmospheric` input data defined in file `ATMOSPHERE.in`) 
+1. Input data preparation
+
+2. **Modifying** (i.e. `atmospheric` input data defined in file `ATMOSPHERE.in`) 
 an already pre-prepared `HYDRUS1D` model (using the `HYDRUS1D GUI`)
 
 2. **Running** it from within `R`  by using the command line (`cmd`) and 
@@ -65,15 +68,20 @@ paths <- kwb.utils::resolve(paths_list)
 
 ```
 
-## Prepare Input
+## Input Data
 
-### Soil Data
+### Soil
 
-```{r prepare_soils, eval=TRUE}
+Soil data is derived from depth-dependent grain-size analysis of soil samples taken
+in Braunschweig. The following required input parameters for the `van Genuchten` 
+model used in `HYDRUS1D` were derived by using the pedotransfer function [ROSETTA-API version 3](http://ncss-tech.github.io/AQP/soilDB/ROSETTA-API.html), which was developed 
+by [Zhang and Schaap, 2017](https://doi.org/10.1016/j.jhydrol.2017.01.004).
+
+```{r prepare_soils_all_depth, eval=TRUE}
 
 library(flextreat.hydrus1d)
 
-soil_dat <- readr::read_csv(paths$soil_data) %>% 
+soil_dat <- readr::read_csv(paths$soil_data, show_col_types = FALSE) %>% 
   dplyr::mutate(layer_id = dplyr::if_else(.data$tiefe_cm_ende < 60, 
                                        1, 
                                        2),
@@ -85,15 +93,26 @@ soil_dat <- readr::read_csv(paths$soil_data) %>%
   dplyr::mutate(clay = dplyr::if_else(.data$clay < 0,
                                       0, 
                                       .data$clay)) %>% 
-  soilDB::ROSETTA(vars = c("sand", "silt", "clay"),
-                  v = "3") %>% 
+  soilDB:::ROSETTA(vars = c("sand", "silt", "clay"),
+                   v = "3") %>% 
   dplyr::mutate(alpha = 10^.data$alpha,
                 npar = 10^.data$npar, 
                 ksat = 10^.data$ksat)
 
 
 knitr::kable(soil_dat)
+```
 
+Due to similar soil characteristics, only two different layers (column `layer_id`)
+were defined:
+- `layer 1`: ranging from `0 cm` - `55 cm` depth
+- `layer 2`: ranging from `55 cm` - `210 cm` depth
+
+The spatially aggregation for each layer (geometric mean) of the input parameters 
+for the `van Genuchten` model is performed with the code below and shown in the 
+subsequent table.
+
+```{r prepare_soil_dat_per_layer, eval=TRUE}
 soil_dat_per_layer <- soil_dat %>% 
   dplyr::group_by(.data$layer_id) %>% 
   dplyr::summarise(layer_thickness = max(.data$tiefe_cm_ende) - min(.data$tiefe_cm_start),
@@ -107,7 +126,150 @@ soil_dat_per_layer <- soil_dat %>%
 knitr::kable(soil_dat_per_layer)
 ```
 
-### Atmospheric Boundary Conditons
+### Atmospheric Boundary Conditions
+
+In total three different atmospheric input boundary conditions (`precipitation`, 
+`potential evaporation` and `irrigation` are used within the `HYDRUS1D` model 
+and described in the following subchapters in more detail. 
+
+#### Rainfall
+
+Rainfall is based on historical **hourly raw data** downloaded from [DWD open-data ftp server](ftp://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00662_19971022_20211231_hist.zip) for `station_id` = `662` (i.e. Braunschweig). Data is aggregated within `R` to  
+daily sums by using the code below:
+
+```{r input_rainfall, eval=FALSE}
+install.packages("rdwd")
+library(dplyr)
+rdwd::updateRdwd()
+
+rdwd::findID("Braunschweig")
+rdwd::selectDWD(name = "Braunschweig", res = "daily")
+
+url_bs_rain <- rdwd::selectDWD(name = "Braunschweig",
+                               res = "hourly",
+                               var = "precipitation",
+                               per = "historical" )
+
+bs_rain <- rdwd::dataDWD(url_bs_rain)
+
+precipitation_hourly <- rdwd::dataDWD(url_bs_rain) %>%
+  dplyr::select(.data$MESS_DATUM, .data$R1) %>%
+  dplyr::rename("datetime" = "MESS_DATUM",
+                "precipitation_mm" = "R1")
+
+usethis::use_data(precipitation_hourly)
+
+
+precipitation_daily <- precipitation_hourly %>%
+  dplyr::mutate("date" = as.Date(datetime)) %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(rain_mm = sum(precipitation_mm))
+
+usethis::use_data(precipitation_daily)
+```
+
+```{r input_precipitation_daily_head, eval=is_windows}
+DT::datatable(head(flextreat.hydrus1d::precipitation_daily))
+```
+
+#### Potential Evaporation
+
+Is based on **daily potential evaporation grids (1km x 1km)** downloaded from [DWD open-data server](https://opendata.dwd.de/climate_environment/CDC/grids_germany/daily/evapo_p/), where all grids (i.e. 46) within the `Abwasserverregnungsgebiet.shp` were selected and spatially aggregated (`mean`, 
+`sd`, `min`, `max`) by using the code below: 
+
+```{r input_potential_evaporation, eval=FALSE}
+remotes::install_github("kwb-r/kwb.dwd@dev")
+
+shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
+                          package = "flextreat.hydrus1d")
+
+# Only data of full months can currently be read!
+evapo_p <- kwb.dwd::read_daily_data_over_shape(
+  file = shape_file,
+  variable = "evapo_p",
+  from = "201701",
+  to = "202012"
+)
+
+usethis::use_data(evapo_p)
+```
+
+```{r input_potential_evaporation_head, eval=is_windows}
+DT::datatable(head(flextreat.hydrus1d::evapo_p))
+```
+
+#### Irrigation
+
+Monthly irrigation volumes were provided by **Abwasserverband Braunschweig** for
+the time period `r sprintf("%s - %s", min(flextreat.hydrus1d::irrigation$date_start), max(flextreat.hydrus1d::irrigation$date_end))` as `csv` file and separates between 
+two sources (`groundwater` and `clearwater`). Data preparation was carried 
+out with the code below:
+
+```{r input_irrigation, eval=FALSE}
+irrigation_file <- system.file("extdata/input-data/Beregnungsmengen_AVB.csv",
+                          package = "flextreat.hydrus1d")
+
+
+irrigation_area <- rgdal::readOGR(dsn = shape_file)
+
+
+irrigation <- read.csv2(irrigation_file) %>%
+  dplyr::select(- .data$Monat) %>%
+  dplyr::rename(irrigation_m3 = .data$Menge_m3,
+                source = .data$Typ,
+                month = .data$Monat_num,
+                year = .data$Jahr) %>%
+  dplyr::mutate(date_start = as.Date(sprintf("%d-%02d-01",
+                               .data$year,
+                               .data$month)),
+                days_in_month = as.numeric(lubridate::days_in_month(.data$date_start)),
+                date_end =  as.Date(sprintf("%d-%02d-%02d",
+                                            .data$year,
+                                            .data$month,
+                                            .data$days_in_month)),
+                source = kwb.utils::multiSubstitute(.data$source,
+                                                    replacements = list("Grundwasser" = "groundwater.mmPerDay",
+                                                                        "Klarwasser" = "clearwater.mmPerDay")),
+                irrigation_cbmPerDay = .data$irrigation_m3/.data$days_in_month,
+                irrigation_area_sqm = irrigation_area$area,
+                irrigation_mmPerDay = 1000*irrigation_cbmPerDay/irrigation_area_sqm) %>%
+  dplyr::select(.data$year,
+                .data$month,
+                .data$days_in_month,
+                .data$date_start,
+                .data$date_end,
+                .data$source,
+                .data$irrigation_mmPerDay,
+                .data$irrigation_area_sqm) %>%
+  tidyr::pivot_wider(names_from = .data$source,
+                     values_from = .data$irrigation_mmPerDay)
+
+
+usethis::use_data(irrigation)
+```
+
+
+```{r input_irrigation_head, eval=is_windows}
+DT::datatable(head(flextreat.hydrus1d::irrigation))
+```
+
+
+## HYDRUS-1D
+
+### Modify Input Files 
+
+All model input files were initially setup by using the `HYDRUS1D-GUI` but the 
+following below were modified manually with the 
+
+#### SELECTOR.in
+
+Soil input data were entered manually in `SELECTOR.in` for the two layers defined 
+the second table in [Chapter: Input Data - Soil](#soil).
+
+#### ATMOSPHERE.in
+
+Based on the atmospheric input data (see [Chapter: Atmospheric Boundary Conditions](#atmospheric-boundary-conditions)) the `ATMOSPHERE.in` file for `HYDRUS1D` is prepared with the code below and starts with the `hydrological summer half year` 
+(assumption: soil is fully wetted at end of winter half year):
 
 ```{r prepare_atmosphere, eval=is_windows}
 
@@ -122,7 +284,19 @@ atmos <- kwb.hydrus1d::write_atmosphere(atm = atm_prep,
 writeLines(atmos, paths$atmosphere)
 ```
 
-## Run Model
+The selected time period covers `r as.integer(diff(range(atm_selected$date)))` days 
+(`r sprintf("%s - %s", min(atm_selected$date), max(atm_selected$date))`), i.e. it
+covers `round(as.integer(diff(range(atm_selected$date)))/(365/2), 0)` hydrological 
+half years.
+
+```{r input_atm_selected, eval=is_windows}
+DT::datatable(atm_selected)
+```
+
+
+### Run Model
+
+Finally the model is run automatically by using the following code:
 
 ```{r run_model, eval=is_windows}
 exe_path <- kwb.hydrus1d::check_hydrus_exe(dir = paths$exe_dir,
@@ -132,7 +306,7 @@ kwb.hydrus1d:::run_model(exe_path = exe_path,
 
 ```
 
-## Read Results
+### Read Results
 
 ```{r read_results, eval=is_windows}
 
