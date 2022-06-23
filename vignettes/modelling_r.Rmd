@@ -128,14 +128,11 @@ knitr::kable(soil_dat_per_layer)
 
 ### Atmospheric Boundary Conditions
 
-In total three different atmospheric input boundary conditions (`precipitation`, 
-`potential evaporation` and `irrigation` are used within the `HYDRUS1D` model 
-and described in the following subchapters in more detail. 
+In total three different atmospheric input boundary conditions (`precipitation`, `potential evaporation` and `irrigation`) are used within the `HYDRUS1D` model and described in the following subchapters in more detail. 
 
 #### Rainfall
 
-Rainfall is based on historical **hourly raw data** downloaded from [DWD open-data ftp server](ftp://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00662_19971022_20211231_hist.zip) for `station_id` = `662` (i.e. Braunschweig). Data is aggregated within `R` to  
-daily sums by using the code below:
+Rainfall is based on historical **hourly raw data** downloaded from [DWD open-data ftp server](ftp://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00662_19971022_20211231_hist.zip) for `station_id` = `662` (i.e. Braunschweig). Data is aggregated within `R` to daily sums by using the code below:
 
 ```{r input_rainfall, eval=FALSE}
 install.packages("rdwd")
@@ -285,9 +282,7 @@ writeLines(atmos, paths$atmosphere)
 ```
 
 The selected time period covers `r as.integer(diff(range(atm_selected$date)))` days 
-(`r sprintf("%s - %s", min(atm_selected$date), max(atm_selected$date))`), i.e. it
-covers `round(as.integer(diff(range(atm_selected$date)))/(365/2), 0)` hydrological 
-half years.
+(`r sprintf("%s - %s", min(atm_selected$date), max(atm_selected$date))`), i.e. it covers `r round(as.integer(diff(range(atm_selected$date)))/(365/2), 0)` hydrological half years.
 
 ```{r input_atm_selected, eval=is_windows}
 DT::datatable(atm_selected)
