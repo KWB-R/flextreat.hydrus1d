@@ -288,6 +288,13 @@ The selected time period covers `r as.integer(diff(range(atm_selected$date)))` d
 DT::datatable(atm_selected)
 ```
 
+These time-series were converted with the function `flextreat.hydrus1d::prepare_atmosphere()` into the data format required 
+by `HYDRUS1D`. Due to the fact, that `irrigation rates` (i.e. sum of `clearwater.mmPerDay` and `groundwater.mmPerDay`) cannot be entered separately as input column within `HYDRUS1D`, these were simply added to th `prec` (i.e. `precipitation`) column. The whole time series defined in `ATMOSPHERE.in` is shown below:
+
+```{r input_atm_prep, eval=is_windows}
+DT::datatable(atm_prep)
+```
+
 
 ### Run Model
 
