@@ -61,7 +61,7 @@ paths_list <- list(
   t_level = "<model_dir>/T_LEVEL.out",
   runinf = "<model_dir>/Run_Inf.out",
   solute_id = 1, 
-  solute = "model_dir/solute<solute_id>.out",
+  solute = "<model_dir>/solute<solute_id>.out",
   soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
 )
 
@@ -278,7 +278,7 @@ atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
 
 atm_prep <- flextreat.hydrus1d::prepare_atmosphere(
   atm_selected, 
-  conc_irrig_clearwater = 100, # use as "clearwater" tracer 
+  conc_irrig_clearwater = 1, # use as "clearwater" tracer 
   conc_irrig_groundwater = 0, 
   conc_rain = 0)
 
