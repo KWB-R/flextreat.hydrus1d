@@ -60,6 +60,8 @@ paths_list <- list(
   a_level = "<model_dir>/A_LEVEL.out",
   t_level = "<model_dir>/T_LEVEL.out",
   runinf = "<model_dir>/Run_Inf.out",
+  solute_id = 1, 
+  solute = "model_dir/solute<solute_id>.out",
   soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
 )
 
@@ -272,13 +274,22 @@ Based on the atmospheric input data (see [Chapter: Atmospheric Boundary Conditio
 
 atm <- flextreat.hydrus1d::prepare_atmosphere_data()
 atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
-atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm_selected)
 
 
-atmos <- kwb.hydrus1d::write_atmosphere(atm = atm_prep,
-                                        MaxAL = nrow(atm_prep))
+atm_prep <- flextreat.hydrus1d::prepare_atmosphere(
+  atm_selected, 
+  conc_irrig_clearwater = 100, # use as "clearwater" tracer 
+  conc_irrig_groundwater = 0, 
+  conc_rain = 0)
+
+atmos <- kwb.hydrus1d::write_atmosphere(
+  atm = atm_prep,
+  MaxAL = nrow(atm_prep),
+  round_digits = 6 # increase precision for "clearwater" tracer!
+  )
 
 writeLines(atmos, paths$atmosphere)
+
 ```
 
 The selected time period covers `r as.integer(diff(range(atm_selected$date)))` days 
@@ -320,4 +331,7 @@ t_level
 
 runinf <- kwb.hydrus1d::read_runinf(paths$runinf)
 runinf
+
+solute <- kwb.hydrus1d::read_solute(paths$solute)
+solute
 ```

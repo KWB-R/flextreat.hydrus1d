@@ -4,10 +4,25 @@
 \alias{prepare_atmosphere}
 \title{Prepare Atmosphere}
 \usage{
-prepare_atmosphere(atm, defaults = kwb.hydrus1d::defaults_atmosphere())
+prepare_atmosphere(
+  atm,
+  conc_irrig_clearwater = 100,
+  conc_irrig_groundwater = 0,
+  conc_rain = 0,
+  defaults = kwb.hydrus1d::defaults_atmosphere()
+)
 }
 \arguments{
 \item{atm}{atm as retrieved by \code{prepare_atmosphere_data}}
+
+\item{conc_irrig_clearwater}{substance concentration in source "clearwater"
+used for irrigation (default: 100, set all other source concentrations in default
+to 0 in order to calculate share of "clearwater" infiltration to groundwater)}
+
+\item{conc_irrig_groundwater}{substance concentration in source "groundwater"
+used for irrigation (default: 0)}
+
+\item{conc_rain}{substance concentration in rainfall (default: 0)}
 
 \item{defaults}{defaults for undefined parameters\code{\link[kwb.hydrus1d:defaults_atmosphere]{kwb.hydrus1d::defaults_atmosphere()}}}
 }
@@ -15,7 +30,11 @@ prepare_atmosphere(atm, defaults = kwb.hydrus1d::defaults_atmosphere())
 tibble with peoered
 }
 \description{
-Prepare Atmosphere
+Prepares atmospheric input data structure required by HYDRUS1D
+and by default uses a conservative tracer in irrigation source "clearwater" (
+set to 1) in order to track the share of cleaned wastewater in the system inflow
+rate (as "Prec" column is a combined value of irrigation using either "groundwater"
+or "clearwater" and real "rainfall").
 }
 \examples{
 atm <- prepare_atmosphere_data()
