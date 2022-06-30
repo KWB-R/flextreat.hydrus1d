@@ -64,7 +64,7 @@ dividing with assumed irrigation area (44111068 m2)</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="va">irrigation</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="va">irrigation</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -98,45 +98,45 @@ dividing with assumed irrigation area (44111068 m2)</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dplyr"</span>, <span class="st">"tidyr"</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">irrigation_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata/input-data/Beregnungsmengen_AVB.csv"</span>,</span>
-<span class="r-in">package <span class="op">=</span> <span class="st">"flextreat.hydrus1d"</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">irrigation_area</span> <span class="op">&lt;-</span> <span class="fu">rgdal</span><span class="fu">::</span><span class="fu">readOGR</span><span class="op">(</span>dsn <span class="op">=</span> <span class="va">shape_file</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">irrigation</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv2</a></span><span class="op">(</span><span class="va">irrigation_file</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span>
-<span class="r-in">  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span> <span class="va">.data</span><span class="op">$</span><span class="va">Monat</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span>
-<span class="r-in">  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>irrigation_m3 <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Menge_m3</span>,</span>
-<span class="r-in">                source <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Typ</span>,</span>
-<span class="r-in">                month <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Monat_num</span>,</span>
-<span class="r-in">                year <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Jahr</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span>
-<span class="r-in">  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>date_start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%d-%02d-01"</span>,</span>
-<span class="r-in">                                             <span class="va">.data</span><span class="op">$</span><span class="va">year</span>,</span>
-<span class="r-in">                                             <span class="va">.data</span><span class="op">$</span><span class="va">month</span><span class="op">)</span><span class="op">)</span>,</span>
-<span class="r-in">                days_in_month <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu">lubridate</span><span class="fu">::</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/days_in_month.html" class="external-link">days_in_month</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">date_start</span><span class="op">)</span><span class="op">)</span>,</span>
-<span class="r-in">                date_end <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%d-%02d-%02d"</span>,</span>
-<span class="r-in">                                            <span class="va">.data</span><span class="op">$</span><span class="va">year</span>,</span>
-<span class="r-in">                                            <span class="va">.data</span><span class="op">$</span><span class="va">month</span>,</span>
-<span class="r-in">                                            <span class="va">.data</span><span class="op">$</span><span class="va">days_in_month</span><span class="op">)</span><span class="op">)</span>,</span>
-<span class="r-in">                source <span class="op">=</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/multiSubstitute.html" class="external-link">multiSubstitute</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">source</span>,</span>
-<span class="r-in">                                                    replacements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"Grundwasser"</span> <span class="op">=</span> <span class="st">"groundwater.mmPerDay"</span>,</span>
-<span class="r-in">                                                                        <span class="st">"Klarwasser"</span> <span class="op">=</span> <span class="st">"clearwater.mmPerDay"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span class="r-in">                irrigation_cbmPerDay <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_m3</span><span class="op">/</span><span class="va">.data</span><span class="op">$</span><span class="va">days_in_month</span>,</span>
-<span class="r-in">                irrigation_area_sqm <span class="op">=</span> <span class="va">irrigation_area</span><span class="op">$</span><span class="va">area</span>,</span>
-<span class="r-in">                irrigation_mmPerDay <span class="op">=</span> <span class="fl">1000</span><span class="op">*</span><span class="va">irrigation_cbmPerDay</span><span class="op">/</span><span class="va">irrigation_area_sqm</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span>
-<span class="r-in">  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">year</span>,</span>
-<span class="r-in">                <span class="va">.data</span><span class="op">$</span><span class="va">month</span>,</span>
-<span class="r-in">                <span class="va">.data</span><span class="op">$</span><span class="va">days_in_month</span>,</span>
-<span class="r-in">                <span class="va">.data</span><span class="op">$</span><span class="va">date_start</span>,</span>
-<span class="r-in">                <span class="va">.data</span><span class="op">$</span><span class="va">date_end</span>,</span>
-<span class="r-in">                <span class="va">.data</span><span class="op">$</span><span class="va">source</span>,</span>
-<span class="r-in">                <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_mmPerDay</span>,</span>
-<span class="r-in">                <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_area_sqm</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span>
-<span class="r-in">  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_wider.html" class="external-link">pivot_wider</a></span><span class="op">(</span>names_from <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">source</span>,</span>
-<span class="r-in">                     values_from <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_mmPerDay</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">flextreat.hydrus1d</span><span class="fu">::</span><span class="va">irrigation</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dplyr"</span>, <span class="st">"tidyr"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">irrigation_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata/input-data/Beregnungsmengen_AVB.csv"</span>,</span></span>
+<span class="r-in"><span>package <span class="op">=</span> <span class="st">"flextreat.hydrus1d"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">irrigation_area</span> <span class="op">&lt;-</span> <span class="fu">rgdal</span><span class="fu">::</span><span class="fu">readOGR</span><span class="op">(</span>dsn <span class="op">=</span> <span class="va">shape_file</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">irrigation</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv2</a></span><span class="op">(</span><span class="va">irrigation_file</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
+<span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span> <span class="va">.data</span><span class="op">$</span><span class="va">Monat</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
+<span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>irrigation_m3 <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Menge_m3</span>,</span></span>
+<span class="r-in"><span>                source <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Typ</span>,</span></span>
+<span class="r-in"><span>                month <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Monat_num</span>,</span></span>
+<span class="r-in"><span>                year <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">Jahr</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
+<span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>date_start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%d-%02d-01"</span>,</span></span>
+<span class="r-in"><span>                                             <span class="va">.data</span><span class="op">$</span><span class="va">year</span>,</span></span>
+<span class="r-in"><span>                                             <span class="va">.data</span><span class="op">$</span><span class="va">month</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                days_in_month <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu">lubridate</span><span class="fu">::</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/days_in_month.html" class="external-link">days_in_month</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">date_start</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                date_end <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%d-%02d-%02d"</span>,</span></span>
+<span class="r-in"><span>                                            <span class="va">.data</span><span class="op">$</span><span class="va">year</span>,</span></span>
+<span class="r-in"><span>                                            <span class="va">.data</span><span class="op">$</span><span class="va">month</span>,</span></span>
+<span class="r-in"><span>                                            <span class="va">.data</span><span class="op">$</span><span class="va">days_in_month</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                source <span class="op">=</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/multiSubstitute.html" class="external-link">multiSubstitute</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">source</span>,</span></span>
+<span class="r-in"><span>                                                    replacements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"Grundwasser"</span> <span class="op">=</span> <span class="st">"groundwater.mmPerDay"</span>,</span></span>
+<span class="r-in"><span>                                                                        <span class="st">"Klarwasser"</span> <span class="op">=</span> <span class="st">"clearwater.mmPerDay"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                irrigation_cbmPerDay <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_m3</span><span class="op">/</span><span class="va">.data</span><span class="op">$</span><span class="va">days_in_month</span>,</span></span>
+<span class="r-in"><span>                irrigation_area_sqm <span class="op">=</span> <span class="va">irrigation_area</span><span class="op">$</span><span class="va">area</span>,</span></span>
+<span class="r-in"><span>                irrigation_mmPerDay <span class="op">=</span> <span class="fl">1000</span><span class="op">*</span><span class="va">irrigation_cbmPerDay</span><span class="op">/</span><span class="va">irrigation_area_sqm</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
+<span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">year</span>,</span></span>
+<span class="r-in"><span>                <span class="va">.data</span><span class="op">$</span><span class="va">month</span>,</span></span>
+<span class="r-in"><span>                <span class="va">.data</span><span class="op">$</span><span class="va">days_in_month</span>,</span></span>
+<span class="r-in"><span>                <span class="va">.data</span><span class="op">$</span><span class="va">date_start</span>,</span></span>
+<span class="r-in"><span>                <span class="va">.data</span><span class="op">$</span><span class="va">date_end</span>,</span></span>
+<span class="r-in"><span>                <span class="va">.data</span><span class="op">$</span><span class="va">source</span>,</span></span>
+<span class="r-in"><span>                <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_mmPerDay</span>,</span></span>
+<span class="r-in"><span>                <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_area_sqm</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
+<span class="r-in"><span>  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_wider.html" class="external-link">pivot_wider</a></span><span class="op">(</span>names_from <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">source</span>,</span></span>
+<span class="r-in"><span>                     values_from <span class="op">=</span> <span class="va">.data</span><span class="op">$</span><span class="va">irrigation_mmPerDay</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">flextreat.hydrus1d</span><span class="fu">::</span><span class="va">irrigation</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 6 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    year month days_in_month date_start date_end   irrigation_area_sqm</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
@@ -148,7 +148,7 @@ dividing with assumed irrigation area (44111068 m2)</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>  <span style="text-decoration: underline;">2</span>017     6            30 2017-06-01 2017-06-30           44<span style="text-decoration: underline;">111</span>068.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># … with 2 more variables: groundwater.mmPerDay &lt;dbl&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   clearwater.mmPerDay &lt;dbl&gt;</span></span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -160,7 +160,7 @@ dividing with assumed irrigation area (44111068 m2)</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
     </footer></div>
