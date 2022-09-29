@@ -14,7 +14,7 @@ NMat    NLay  CosAlpha
   2       2       1
 *** BLOCK B: WATER FLOW INFORMATION ************************************
 MaxIt   TolTh   TolH       (maximum number of iterations and tolerances)
-  10    0.001      1
+  20    0.001      1
 TopInf WLayer KodTop InitCond
  t     t      -1       t
 BotInf qGWLF FreeD SeepF KodBot DrainF  hSeep
@@ -75,7 +75,7 @@ TPrint(1),TPrint(2),...,TPrint(MPL)
      334.34       335.8      337.26      338.72      340.18      341.64 
       343.1      344.56      346.02      347.48      348.94       350.4 
      351.86      353.32      354.78      356.24       357.7      359.16 
-     360.62      362.08      363.54         365 
+     360.62      362.08      363.54        1279 
 *** BLOCK F: SOLUTE TRANSPORT INFORMATION *****************************************************
  Epsi  lUpW  lArtD lTDep    cTolA    cTolR   MaxItC    PeCr  No.Solutes  lTort   iBacter   lFiltr  nChPar
   0.5     f     f     f         0         0     1        2        1       t       0        f       16
@@ -90,7 +90,7 @@ iNonEqul lWatDep lDualNEq lInitM  lInitEq lTort lDummy  lDummy  lDummy  lDummy  
           0           0           1           0           0           0           0           0           0           0           0           0           0           0 
           0           0           1           0           0           0           0           0           0           0           0           0           0           0 
       kTopSolute  SolTop    kBotSolute  SolBot
-         -1           0           0           0 
+          1           0           0           0 
       tPulse
         365
 *** END OF INPUT FILE 'SELECTOR.IN' ************************************
