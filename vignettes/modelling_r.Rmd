@@ -177,8 +177,6 @@ Is based on **daily potential evaporation grids (1km x 1km)** downloaded from [D
 `sd`, `min`, `max`) by using the code below: 
 
 ```{r input_potential_evaporation, eval=FALSE}
-remotes::install_github("kwb-r/kwb.dwd@dev")
-
 shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
                           package = "flextreat.hydrus1d")
 
@@ -334,4 +332,5 @@ runinf
 
 solute <- kwb.hydrus1d::read_solute(paths$solute)
 solute
+
 ```
