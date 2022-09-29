@@ -334,3 +334,27 @@ solute <- kwb.hydrus1d::read_solute(paths$solute)
 solute
 
 ```
+
+### Plot
+
+```{r plot_results_static, eval=is_windows}
+
+gg <- solute %>%
+  dplyr::select(.data$time, .data$c_top, .data$c_bot) %>%
+  dplyr::mutate(date = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600) %>%
+  tidyr::pivot_longer(cols = c("c_top", "c_bot"),
+                      names_to = "parameter",
+                      values_to = "value") %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = .data$date,
+                                         y = .data$value,
+                                         col = .data$parameter )) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::ylim(c(0,1)) +
+  ggplot2::theme_bw()
+gg
+```
+
+```{r plot_results_interactive, eval=is_windows}
+plotly::ggplotly(gg)
+```
