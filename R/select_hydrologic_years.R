@@ -24,5 +24,5 @@ select_hydrologic_years <- function(atm = prepare_atmosphere_data()) {
     which(matches)
   }
 
-  atm[min(which_matches("-05-01")):max(which_matches("-10-30")), ]
+  atm[min(which_matches("-05-01")):max(which_matches("-10-31")), ]
 }
