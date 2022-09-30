@@ -36,7 +36,6 @@ Suggests:
     DT,
     ggplot2,
     knitr,
-    lubridate,
     plotly,
     kwb.dwd,
     kwb.python,
