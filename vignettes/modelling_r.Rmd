@@ -338,22 +338,33 @@ summary(runinf)
 
 solute <- kwb.hydrus1d::read_solute(paths$solute) 
 
-aggregate_solute <- function(solute, col_aggr = "date")  {
-  solute %>% 
-  dplyr::mutate(time_diff = c(0, diff(.data$time)),
-                datetime = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600,
+
+## Helper function
+add_times <- function(df) {
+  df %>% 
+  dplyr::mutate(datetime = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600,
                 month_last_day = lubridate::days_in_month(.data$datetime),
+                year = lubridate::year(.data$datetime),
+                month = lubridate::month(.data$datetime), 
+                year_hydrologic = ifelse(.data$month <= 10, .data$year, .data$year + 1),
                 yearmonth = as.Date(sprintf("%s-%02d", 
                                             format(.data$datetime, format = "%Y-%m"),
                                             .data$month_last_day)),
                 date = as.Date(.data$datetime),
-                time_c_top = .data$time_diff * .data$c_top,
-                time_c_bot = .data$time_diff * .data$c_bot,
+                time_integer = as.integer(.data$time))
+}
+
+aggregate_solute <- function(solute, col_aggr = "date")  {
+  solute %>% 
+  add_times() %>% 
+  dplyr::mutate(diff_time = c(0, diff(.data$time)),
+                time_c_top = .data$diff_time * .data$c_top,
+                time_c_bot = .data$diff_time * .data$c_bot,
                 time_integer = as.integer(.data$time)) %>% 
   dplyr::group_by(.data[[col_aggr]]) %>% 
-  dplyr::summarise(time_diff = sum(.data$time_diff),
-                   c_top = sum(.data$time_c_top)/time_diff,
-                   c_bot = sum(.data$time_c_bot)/time_diff) %>% 
+  dplyr::summarise(diff_time = sum(.data$diff_time),
+                   c_top = sum(.data$time_c_top)/diff_time,
+                   c_bot = sum(.data$time_c_bot)/diff_time) %>% 
   dplyr::relocate(.data[[col_aggr]])
 }
 
@@ -387,6 +398,9 @@ solute_aggr %>%
 
 solute_date <- aggregate_solute(solute, col_aggr = "date") 
 solute_yearmonth <- aggregate_solute(solute, col_aggr = "yearmonth")
+solute_year_hydrologic <- aggregate_solute(solute, col_aggr = "year_hydrologic") %>%
+  dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
+DT::datatable(solute_year_hydrologic)
 
 
 solute_date_plot <- plot_solute(solute_date)
@@ -394,6 +408,7 @@ solute_yearmonth_plot <- plot_solute(solute_yearmonth)
 
 solute_date_plot
 solute_yearmonth_plot
+
 
 ```
 
@@ -403,9 +418,7 @@ t_level
 
 ## t_level aggregate
 aggregate_tlevel <- function(t_level, 
-                             col_aggr = "date", 
-                             unit_org = "cm", 
-                             unit_target = "mm")  {
+                             col_aggr = "date")  {
   tmp <- t_level %>%
   dplyr::select(.data$time, tidyselect::starts_with("sum"))
   
@@ -426,25 +439,10 @@ tmp3 <- tibble::tibble(time = tmp$time,
   dplyr::bind_cols(t2)
 
 tmp3 %>% 
-  dplyr::mutate(datetime = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600,
-                month_last_day = lubridate::days_in_month(.data$datetime),
-                year = lubridate::year(.data$datetime),
-                month = lubridate::month(.data$datetime), 
-                year_hydrologic = ifelse(.data$month <= 10, .data$year, .data$year + 1),
-                yearmonth = as.Date(sprintf("%s-%02d", 
-                                            format(.data$datetime, format = "%Y-%m"),
-                                            .data$month_last_day)),
-                date = as.Date(.data$datetime),
-                time_integer = as.integer(.data$time)) %>% 
+  add_times() %>% 
   dplyr::group_by(.data[[col_aggr]]) %>% 
   dplyr::summarise(dplyr::across(tidyselect::all_of(names(tmp3)[-1]), ~ sum(.x))) %>% 
-  dplyr::relocate(.data[[col_aggr]]) %>%  
-  tidyr::pivot_longer(cols = tidyselect::all_of(tidyselect::all_of(names(tmp3)[c(-1, -2)])),
-                      names_to = "parameter", 
-                      values_to = "value") %>% 
-  dplyr::mutate(value = measurements::conv_unit(.data$value, 
-                                                from = unit_org,
-                                                to = unit_target))
+  dplyr::relocate(.data[[col_aggr]])
                       
 }
 
@@ -452,18 +450,28 @@ tmp3 %>%
 tlevel_aggr_date <- aggregate_tlevel(t_level)
 tlevel_aggr_yearmonth <- aggregate_tlevel(t_level, col_aggr = "yearmonth")
 tlevel_aggr_year_hydrologic <- aggregate_tlevel(t_level, col_aggr = "year_hydrologic") %>% 
-  dplyr::mutate(year_hydrologic =  as.integer(.data$year_hydrologic)) %>% 
-  dplyr::filter(.data$year_hydrologic != 2017) ### filter out as only may-october
+  dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
+
+DT::datatable(tlevel_aggr_year_hydrologic)
 ```
 
 
 ```{r plot_waterbalance_static}
 
-plot_waterbalance <- function(tlevel_aggr, y_label = "Water Balance Component (mm)") {
+plot_waterbalance <- function(tlevel_aggr, 
+                              y_label = "Water Balance Component (mm)",
+                              unit_org = "cm",
+                              unit_target = "mm") {
 
 x_col <- names(tlevel_aggr)[1]
 
 tlevel_aggr %>%
+  tidyr::pivot_longer(cols = tidyselect::all_of(tidyselect::all_of(names(tlevel_aggr)[c(-1, -2)])),
+                      names_to = "parameter", 
+                      values_to = "value") %>% 
+  dplyr::mutate(value = measurements::conv_unit(.data$value, 
+                                                from = unit_org,
+                                                to = unit_target)) %>% 
   dplyr::filter(.data$parameter %in% c("infil", "evap", "run_off")) %>% 
   ggplot2::ggplot(mapping = ggplot2::aes(x = .data[[x_col]],
                                          y = .data$value,

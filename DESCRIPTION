@@ -39,6 +39,7 @@ Suggests:
     plotly,
     kwb.dwd,
     kwb.python,
+    measurements,
     rmarkdown
 VignetteBuilder: 
     knitr
