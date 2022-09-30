@@ -321,14 +321,15 @@ kwb.hydrus1d:::run_model(exe_path = exe_path,
 
 ```{r read_results, eval=is_windows}
 
+runinf <- kwb.hydrus1d::read_runinf(paths$runinf)
+
+summary(runinf)
+
 a_level <- kwb.hydrus1d::read_alevel(paths$a_level)
 a_level
 
 t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
 t_level
-
-runinf <- kwb.hydrus1d::read_runinf(paths$runinf)
-runinf
 
 solute <- kwb.hydrus1d::read_solute(paths$solute)
 solute
