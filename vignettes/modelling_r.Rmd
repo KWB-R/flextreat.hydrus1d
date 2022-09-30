@@ -319,43 +319,184 @@ kwb.hydrus1d:::run_model(exe_path = exe_path,
 
 ### Read Results
 
-```{r read_results, eval=is_windows}
+
+#### Numerical Solution 
+
+```{r read_results_numerical-solution, eval=is_windows}
 
 runinf <- kwb.hydrus1d::read_runinf(paths$runinf)
 
 summary(runinf)
+```
 
-a_level <- kwb.hydrus1d::read_alevel(paths$a_level)
-a_level
 
-t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
-t_level
+#### Conservative Tracer
 
-solute <- kwb.hydrus1d::read_solute(paths$solute)
-solute
+
+
+```{r read_results_solute, eval=is_windows}
+
+solute <- kwb.hydrus1d::read_solute(paths$solute) 
+
+aggregate_solute <- function(solute, col_aggr = "date")  {
+  solute %>% 
+  dplyr::mutate(time_diff = c(0, diff(.data$time)),
+                datetime = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600,
+                month_last_day = lubridate::days_in_month(.data$datetime),
+                yearmonth = as.Date(sprintf("%s-%02d", 
+                                            format(.data$datetime, format = "%Y-%m"),
+                                            .data$month_last_day)),
+                date = as.Date(.data$datetime),
+                time_c_top = .data$time_diff * .data$c_top,
+                time_c_bot = .data$time_diff * .data$c_bot,
+                time_integer = as.integer(.data$time)) %>% 
+  dplyr::group_by(.data[[col_aggr]]) %>% 
+  dplyr::summarise(time_diff = sum(.data$time_diff),
+                   c_top = sum(.data$time_c_top)/time_diff,
+                   c_bot = sum(.data$time_c_bot)/time_diff) %>% 
+  dplyr::relocate(.data[[col_aggr]])
+}
+
+
+
 
 ```
 
-### Plot
 
-```{r plot_results_static, eval=is_windows}
+```{r plot_results_solute_static, eval=is_windows}
 
-gg <- solute %>%
-  dplyr::select(.data$time, .data$c_top, .data$c_bot) %>%
-  dplyr::mutate(date = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600) %>%
+plot_solute <- function(solute_aggr, y_label = "Share of 'clearwater' (%)") {
+
+x_col <- names(solute_aggr)[1]
+
+solute_aggr %>%
   tidyr::pivot_longer(cols = c("c_top", "c_bot"),
                       names_to = "parameter",
                       values_to = "value") %>%
-  ggplot2::ggplot(mapping = ggplot2::aes(x = .data$date,
+  dplyr::filter(!is.na(.data$value)) %>% 
+  ggplot2::ggplot(mapping = ggplot2::aes(x = .data[[x_col]],
                                          y = .data$value,
                                          col = .data$parameter )) +
   ggplot2::geom_point() +
-  ggplot2::geom_line() +
-  ggplot2::ylim(c(0,1)) +
-  ggplot2::theme_bw()
-gg
+  ggplot2::geom_line() +  
+  ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1), 
+                              limits = c(0,1)) +
+  ggplot2::theme_bw() +
+  ggplot2::labs(y = y_label)
+}
+
+solute_date <- aggregate_solute(solute, col_aggr = "date") 
+solute_yearmonth <- aggregate_solute(solute, col_aggr = "yearmonth")
+
+
+solute_date_plot <- plot_solute(solute_date)
+solute_yearmonth_plot <- plot_solute(solute_yearmonth)
+
+solute_date_plot
+solute_yearmonth_plot
+
 ```
 
-```{r plot_results_interactive, eval=is_windows}
-plotly::ggplotly(gg)
+```{r read_results_tlevel, eval=is_windows}
+t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
+t_level
+
+## t_level aggregate
+aggregate_tlevel <- function(t_level, 
+                             col_aggr = "date", 
+                             unit_org = "cm", 
+                             unit_target = "mm")  {
+  tmp <- t_level %>%
+  dplyr::select(.data$time, tidyselect::starts_with("sum"))
+  
+  cols_to_drop <- names(tmp)[-1]
+  
+t2 <- stats::setNames(lapply(cols_to_drop, function(col_name) {
+    c(tmp[[col_name]][1], diff(tmp[[col_name]]))
+    }),
+  stringr::str_remove(cols_to_drop, "^sum_")) %>% 
+    dplyr::bind_cols()
+
+tmp2 <- dplyr::bind_cols(tmp[, "time"], t2)
+
+diff_time <- c(0,diff(tmp$time))
+
+tmp3 <- tibble::tibble(time = tmp$time,
+               diff_time = diff_time) %>% 
+  dplyr::bind_cols(t2)
+
+tmp3 %>% 
+  dplyr::mutate(datetime = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600,
+                month_last_day = lubridate::days_in_month(.data$datetime),
+                year = lubridate::year(.data$datetime),
+                month = lubridate::month(.data$datetime), 
+                year_hydrologic = ifelse(.data$month <= 10, .data$year, .data$year + 1),
+                yearmonth = as.Date(sprintf("%s-%02d", 
+                                            format(.data$datetime, format = "%Y-%m"),
+                                            .data$month_last_day)),
+                date = as.Date(.data$datetime),
+                time_integer = as.integer(.data$time)) %>% 
+  dplyr::group_by(.data[[col_aggr]]) %>% 
+  dplyr::summarise(dplyr::across(tidyselect::all_of(names(tmp3)[-1]), ~ sum(.x))) %>% 
+  dplyr::relocate(.data[[col_aggr]]) %>%  
+  tidyr::pivot_longer(cols = tidyselect::all_of(tidyselect::all_of(names(tmp3)[c(-1, -2)])),
+                      names_to = "parameter", 
+                      values_to = "value") %>% 
+  dplyr::mutate(value = measurements::conv_unit(.data$value, 
+                                                from = unit_org,
+                                                to = unit_target))
+                      
+}
+
+
+tlevel_aggr_date <- aggregate_tlevel(t_level)
+tlevel_aggr_yearmonth <- aggregate_tlevel(t_level, col_aggr = "yearmonth")
+tlevel_aggr_year_hydrologic <- aggregate_tlevel(t_level, col_aggr = "year_hydrologic") %>% 
+  dplyr::mutate(year_hydrologic =  as.integer(.data$year_hydrologic)) %>% 
+  dplyr::filter(.data$year_hydrologic != 2017) ### filter out as only may-october
+```
+
+
+```{r plot_waterbalance_static}
+
+plot_waterbalance <- function(tlevel_aggr, y_label = "Water Balance Component (mm)") {
+
+x_col <- names(tlevel_aggr)[1]
+
+tlevel_aggr %>%
+  dplyr::filter(.data$parameter %in% c("infil", "evap", "run_off")) %>% 
+  ggplot2::ggplot(mapping = ggplot2::aes(x = .data[[x_col]],
+                                         y = .data$value,
+                                         col = .data$parameter )) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +  
+  ggplot2::theme_bw() +
+  ggplot2::labs(y = y_label)
+}
+
+
+
+wb_date_plot <- plot_waterbalance(tlevel_aggr_date)
+wb_yearmonth_plot <- plot_waterbalance(tlevel_aggr_yearmonth)
+wb_yearhydrologic_plot <- plot_waterbalance(tlevel_aggr_year_hydrologic)
+
+wb_date_plot
+wb_yearmonth_plot
+wb_yearhydrologic_plot
+
+```
+
+
+```{r plot_waterbalance_interactive}
+
+plotly::ggplotly(wb_date_plot)
+plotly::ggplotly(wb_yearmonth_plot)
+
+```
+
+
+```{r read_results_other, eval=is_windows}
+
+a_level <- kwb.hydrus1d::read_alevel(paths$a_level)
+a_level
 ```
