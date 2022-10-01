@@ -36,14 +36,15 @@ an already pre-prepared `HYDRUS1D` model (using the `HYDRUS1D GUI`)
 3. **Importing** and **analysing** the `HYDRUS1D` results within R.
 
 
-
 ## Install R Package
 
 ```{r eval=FALSE}
 # Enable this universe
 options(repos = c(
   kwbr = 'https://kwb-r.r-universe.dev',
-  CRAN = 'https://cloud.r-project.org'))
+  CRAN = 'https://cloud.r-project.org'
+))
+
 # Install R package
 install.packages('flextreat.hydrus1d')
 ```
@@ -51,7 +52,7 @@ install.packages('flextreat.hydrus1d')
 ## Define Paths
 
 ```{r define_paths, eval=is_windows}
-paths_list <- list(
+paths <- kwb.utils::resolve(list(
   extdata = system.file("extdata", package = "flextreat.hydrus1d"),
   exe_dir = "<extdata>/model",
   model_name = "test",
@@ -63,11 +64,7 @@ paths_list <- list(
   solute_id = 1, 
   solute = "<model_dir>/solute<solute_id>.out",
   soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
-)
-
-paths <- kwb.utils::resolve(paths_list)
-
-
+))
 ```
 
 ## Input Data
@@ -76,37 +73,38 @@ paths <- kwb.utils::resolve(paths_list)
 
 Soil data is derived from depth-dependent grain-size analysis of soil samples taken
 in Braunschweig. The following required input parameters for the `van Genuchten` 
-model used in `HYDRUS1D` were derived by using the pedotransfer function [ROSETTA-API version 3](http://ncss-tech.github.io/AQP/soilDB/ROSETTA-API.html), which was developed 
-by [Zhang and Schaap, 2017](https://doi.org/10.1016/j.jhydrol.2017.01.004).
+model used in `HYDRUS1D` were derived by using the pedotransfer function 
+[ROSETTA-API version 3](http://ncss-tech.github.io/AQP/soilDB/ROSETTA-API.html), 
+which was developed by 
+[Zhang and Schaap, 2017](https://doi.org/10.1016/j.jhydrol.2017.01.004).
 
 ```{r prepare_soils_all_depth, eval=TRUE}
-
 library(flextreat.hydrus1d)
 
 soil_dat <- readr::read_csv(paths$soil_data, show_col_types = FALSE) %>% 
-  dplyr::mutate(layer_id = dplyr::if_else(.data$tiefe_cm_ende < 60, 
-                                       1, 
-                                       2),
-                thickness_cm = .data$tiefe_cm_ende - .data$tiefe_cm_start,
-                sand = .data$S_prozent + .data$G_prozent, 
-                silt = .data$U_prozent, 
-                clay = round(100 - .data$sand - .data$silt,
-                                     1)) %>% 
-  dplyr::mutate(clay = dplyr::if_else(.data$clay < 0,
-                                      0, 
-                                      .data$clay)) %>% 
-  soilDB:::ROSETTA(vars = c("sand", "silt", "clay"),
-                   v = "3") %>% 
-  dplyr::mutate(alpha = 10^.data$alpha,
-                npar = 10^.data$npar, 
-                ksat = 10^.data$ksat)
-
+  dplyr::mutate(
+    layer_id = dplyr::if_else(.data$tiefe_cm_ende < 60, 1, 2),
+    thickness_cm = .data$tiefe_cm_ende - .data$tiefe_cm_start,
+    sand = .data$S_prozent + .data$G_prozent, 
+    silt = .data$U_prozent, 
+    clay = round(100 - .data$sand - .data$silt, 1L)
+  ) %>% 
+  dplyr::mutate(
+    clay = dplyr::if_else(.data$clay < 0, 0, .data$clay)
+  ) %>% 
+  soilDB:::ROSETTA(vars = c("sand", "silt", "clay"), v = "3") %>% 
+  dplyr::mutate(
+    alpha = 10^.data$alpha,
+    npar = 10^.data$npar, 
+    ksat = 10^.data$ksat
+  )
 
 knitr::kable(soil_dat)
 ```
 
 Due to similar soil characteristics, only two different layers (column `layer_id`)
 were defined:
+
 - `layer 1`: ranging from `0 cm` - `55 cm` depth
 - `layer 2`: ranging from `55 cm` - `210 cm` depth
 
@@ -117,13 +115,14 @@ subsequent table.
 ```{r prepare_soil_dat_per_layer, eval=TRUE}
 soil_dat_per_layer <- soil_dat %>% 
   dplyr::group_by(.data$layer_id) %>% 
-  dplyr::summarise(layer_thickness = max(.data$tiefe_cm_ende) - min(.data$tiefe_cm_start),
-                   theta_r = sum(.data$theta_r*.data$thickness_cm)/.data$layer_thickness,
-                   theta_s = sum(.data$theta_s*.data$thickness_cm)/.data$layer_thickness,
-                   alpha = sum(.data$alpha*.data$thickness_cm)/.data$layer_thickness,
-                   npar = sum(.data$npar*.data$thickness_cm)/.data$layer_thickness,
-                   ksat = sum(.data$ksat*.data$thickness_cm)/.data$layer_thickness)
-
+  dplyr::summarise(
+    layer_thickness = max(.data$tiefe_cm_ende) - min(.data$tiefe_cm_start),
+    theta_r = sum(.data$theta_r * .data$thickness_cm) / .data$layer_thickness,
+    theta_s = sum(.data$theta_s * .data$thickness_cm) / .data$layer_thickness,
+    alpha = sum(.data$alpha * .data$thickness_cm) / .data$layer_thickness,
+    npar = sum(.data$npar * .data$thickness_cm) / .data$layer_thickness,
+    ksat = sum(.data$ksat * .data$thickness_cm) / .data$layer_thickness
+  )
 
 knitr::kable(soil_dat_per_layer)
 ```
@@ -137,33 +136,36 @@ In total three different atmospheric input boundary conditions (`precipitation`,
 Rainfall is based on historical **hourly raw data** downloaded from [DWD open-data ftp server](ftp://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00662_19971022_20211231_hist.zip) for `station_id` = `662` (i.e. Braunschweig). Data is aggregated within `R` to daily sums by using the code below:
 
 ```{r input_rainfall, eval=FALSE}
-install.packages("rdwd")
 library(dplyr)
-rdwd::updateRdwd()
 
+install.packages("rdwd")
+
+rdwd::updateRdwd()
 rdwd::findID("Braunschweig")
 rdwd::selectDWD(name = "Braunschweig", res = "daily")
 
-url_bs_rain <- rdwd::selectDWD(name = "Braunschweig",
-                               res = "hourly",
-                               var = "precipitation",
-                               per = "historical" )
+url_bs_rain <- rdwd::selectDWD(
+  name = "Braunschweig",
+  res = "hourly",
+  var = "precipitation",
+  per = "historical" 
+)
 
 bs_rain <- rdwd::dataDWD(url_bs_rain)
 
 precipitation_hourly <- rdwd::dataDWD(url_bs_rain) %>%
   dplyr::select(.data$MESS_DATUM, .data$R1) %>%
-  dplyr::rename("datetime" = "MESS_DATUM",
-                "precipitation_mm" = "R1")
-
-usethis::use_data(precipitation_hourly)
-
+  dplyr::rename(
+    datetime = "MESS_DATUM",
+    precipitation_mm = "R1"
+  )
 
 precipitation_daily <- precipitation_hourly %>%
-  dplyr::mutate("date" = as.Date(datetime)) %>%
+  dplyr::mutate(date = as.Date(datetime)) %>%
   dplyr::group_by(date) %>%
   dplyr::summarise(rain_mm = sum(precipitation_mm))
 
+usethis::use_data(precipitation_hourly)
 usethis::use_data(precipitation_daily)
 ```
 
@@ -173,12 +175,17 @@ DT::datatable(head(flextreat.hydrus1d::precipitation_daily))
 
 #### Potential Evaporation
 
-Is based on **daily potential evaporation grids (1km x 1km)** downloaded from [DWD open-data server](https://opendata.dwd.de/climate_environment/CDC/grids_germany/daily/evapo_p/), where all grids (i.e. 46) within the `Abwasserverregnungsgebiet.shp` were selected and spatially aggregated (`mean`, 
-`sd`, `min`, `max`) by using the code below: 
+Is based on **daily potential evaporation grids (1km x 1km)** downloaded from 
+[DWD open-data server](https://opendata.dwd.de/climate_environment/CDC/grids_germany/daily/evapo_p/), 
+where all grids (i.e. 46) within the `Abwasserverregnungsgebiet.shp` were 
+selected and spatially aggregated (`mean`, `sd`, `min`, `max`) by using the code 
+below: 
 
 ```{r input_potential_evaporation, eval=FALSE}
-shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
-                          package = "flextreat.hydrus1d")
+shape_file <- system.file(
+  "extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
+  package = "flextreat.hydrus1d"
+)
 
 # Only data of full months can currently be read!
 evapo_p <- kwb.dwd::read_daily_data_over_shape(
@@ -198,58 +205,63 @@ DT::datatable(head(flextreat.hydrus1d::evapo_p))
 #### Irrigation
 
 Monthly irrigation volumes were provided by **Abwasserverband Braunschweig** for
-the time period `r sprintf("%s - %s", min(flextreat.hydrus1d::irrigation$date_start), max(flextreat.hydrus1d::irrigation$date_end))` as `csv` file and separates between 
-two sources (`groundwater` and `clearwater`). Data preparation was carried 
-out with the code below:
+the time period 
+`r min(flextreat.hydrus1d::irrigation$date_start)` -  
+`r max(flextreat.hydrus1d::irrigation$date_end)` 
+as `csv` file and separates between two sources (`groundwater` and `clearwater`). 
+Data preparation was carried out with the code below:
 
 ```{r input_irrigation, eval=FALSE}
-irrigation_file <- system.file("extdata/input-data/Beregnungsmengen_AVB.csv",
-                          package = "flextreat.hydrus1d")
-
+irrigation_file <- system.file(
+  "extdata/input-data/Beregnungsmengen_AVB.csv",
+  package = "flextreat.hydrus1d"
+)
 
 irrigation_area <- rgdal::readOGR(dsn = shape_file)
 
-
 irrigation <- read.csv2(irrigation_file) %>%
   dplyr::select(- .data$Monat) %>%
-  dplyr::rename(irrigation_m3 = .data$Menge_m3,
-                source = .data$Typ,
-                month = .data$Monat_num,
-                year = .data$Jahr) %>%
-  dplyr::mutate(date_start = as.Date(sprintf("%d-%02d-01",
-                               .data$year,
-                               .data$month)),
-                days_in_month = as.numeric(lubridate::days_in_month(.data$date_start)),
-                date_end =  as.Date(sprintf("%d-%02d-%02d",
-                                            .data$year,
-                                            .data$month,
-                                            .data$days_in_month)),
-                source = kwb.utils::multiSubstitute(.data$source,
-                                                    replacements = list("Grundwasser" = "groundwater.mmPerDay",
-                                                                        "Klarwasser" = "clearwater.mmPerDay")),
-                irrigation_cbmPerDay = .data$irrigation_m3/.data$days_in_month,
-                irrigation_area_sqm = irrigation_area$area,
-                irrigation_mmPerDay = 1000*irrigation_cbmPerDay/irrigation_area_sqm) %>%
-  dplyr::select(.data$year,
-                .data$month,
-                .data$days_in_month,
-                .data$date_start,
-                .data$date_end,
-                .data$source,
-                .data$irrigation_mmPerDay,
-                .data$irrigation_area_sqm) %>%
-  tidyr::pivot_wider(names_from = .data$source,
-                     values_from = .data$irrigation_mmPerDay)
-
+  dplyr::rename(
+    irrigation_m3 = .data$Menge_m3,
+    source = .data$Typ,
+    month = .data$Monat_num,
+    year = .data$Jahr
+  ) %>%
+  dplyr::mutate(
+    date_start = as.Date(sprintf("%d-%02d-01", .data$year, .data$month)),
+    days_in_month = as.numeric(lubridate::days_in_month(.data$date_start)),
+    date_end =  as.Date(sprintf(
+      "%d-%02d-%02d", .data$year, .data$month, .data$days_in_month
+    )),
+    source = kwb.utils::multiSubstitute(.data$source, replacements = list(
+      "Grundwasser" = "groundwater.mmPerDay",
+      "Klarwasser" = "clearwater.mmPerDay"
+    )),
+    irrigation_cbmPerDay = .data$irrigation_m3 / .data$days_in_month,
+    irrigation_area_sqm = irrigation_area$area,
+    irrigation_mmPerDay = 1000 * irrigation_cbmPerDay / irrigation_area_sqm
+  ) %>%
+  dplyr::select(
+    .data$year,
+    .data$month,
+    .data$days_in_month,
+    .data$date_start,
+    .data$date_end,
+    .data$source,
+    .data$irrigation_mmPerDay,
+    .data$irrigation_area_sqm
+  ) %>%
+  tidyr::pivot_wider(
+    names_from = .data$source,
+    values_from = .data$irrigation_mmPerDay
+  )
 
 usethis::use_data(irrigation)
 ```
 
-
 ```{r input_irrigation_head, eval=is_windows}
 DT::datatable(head(flextreat.hydrus1d::irrigation))
 ```
-
 
 ## HYDRUS-1D
 
@@ -265,151 +277,172 @@ the second table in [Chapter: Input Data - Soil](#soil).
 
 #### ATMOSPHERE.in
 
-Based on the atmospheric input data (see [Chapter: Atmospheric Boundary Conditions](#atmospheric-boundary-conditions)) the `ATMOSPHERE.in` file for `HYDRUS1D` is prepared with the code below and starts with the `hydrological summer half year` 
-(assumption: soil is fully wetted at end of winter half year):
+Based on the atmospheric input data (see 
+[Chapter: Atmospheric Boundary Conditions](#atmospheric-boundary-conditions)) 
+the `ATMOSPHERE.in` file for `HYDRUS1D` is prepared with the code below and
+starts with the `hydrological summer half year` (assumption: soil is fully
+wetted at end of winter half year):
 
 ```{r prepare_atmosphere, eval=is_windows}
-
 atm <- flextreat.hydrus1d::prepare_atmosphere_data()
 atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
-
 
 atm_prep <- flextreat.hydrus1d::prepare_atmosphere(
   atm_selected, 
   conc_irrig_clearwater = 1, # use as "clearwater" tracer 
   conc_irrig_groundwater = 0, 
-  conc_rain = 0)
+  conc_rain = 0
+)
 
 atmos <- kwb.hydrus1d::write_atmosphere(
   atm = atm_prep,
   MaxAL = nrow(atm_prep),
   round_digits = 6 # increase precision for "clearwater" tracer!
-  )
+)
 
 writeLines(atmos, paths$atmosphere)
-
 ```
 
-The selected time period covers `r as.integer(diff(range(atm_selected$date)))` days 
-(`r sprintf("%s - %s", min(atm_selected$date), max(atm_selected$date))`), i.e. it covers `r round(as.integer(diff(range(atm_selected$date)))/(365/2), 0)` hydrological half years.
+The selected time period covers 
+`r as.integer(diff(range(atm_selected$date)))` days 
+(`r min(atm_selected$date)` - `r max(atm_selected$date)`), i.e. it covers 
+`r round(as.integer(diff(range(atm_selected$date)))/(365/2))` 
+hydrological half years.
 
 ```{r input_atm_selected, eval=is_windows}
 DT::datatable(atm_selected)
 ```
 
 These time-series were converted with the function `flextreat.hydrus1d::prepare_atmosphere()` into the data format required 
-by `HYDRUS1D`. Due to the fact, that `irrigation rates` (i.e. sum of `clearwater.mmPerDay` and `groundwater.mmPerDay`) cannot be entered separately as input column within `HYDRUS1D`, these were simply added to th `prec` (i.e. `precipitation`) column. The whole time series defined in `ATMOSPHERE.in` is shown below:
+by `HYDRUS1D`. Due to the fact, that `irrigation rates` (i.e. sum of `clearwater.mmPerDay` and `groundwater.mmPerDay`) cannot be entered separately 
+as input column within `HYDRUS1D`, these were simply added to th `prec` (i.e.
+`precipitation`) column. The whole time series defined in `ATMOSPHERE.in` is 
+shown below:
 
 ```{r input_atm_prep, eval=is_windows}
 DT::datatable(atm_prep)
 ```
 
-
 ### Run Model
 
-Finally the model is run automatically by using the following code:
+Finally the model is run with the following code:
 
 ```{r run_model, eval=is_windows}
-exe_path <- kwb.hydrus1d::check_hydrus_exe(dir = paths$exe_dir,
-                                           skip_preinstalled = TRUE)
-kwb.hydrus1d:::run_model(exe_path = exe_path,
-                         model_path = paths$model_dir)
+exe_path <- kwb.hydrus1d::check_hydrus_exe(
+  dir = paths$exe_dir,
+  skip_preinstalled = TRUE
+)
 
+kwb.hydrus1d:::run_model(
+  exe_path = exe_path,
+  model_path = paths$model_dir
+)
 ```
 
 ### Read Results
 
-
 #### Numerical Solution 
 
 ```{r read_results_numerical-solution, eval=is_windows}
-
 runinf <- kwb.hydrus1d::read_runinf(paths$runinf)
 
 summary(runinf)
 ```
 
-
 #### Conservative Tracer
 
-
-
 ```{r read_results_solute, eval=is_windows}
-
 solute <- kwb.hydrus1d::read_solute(paths$solute) 
-
 
 ## Helper function
 add_times <- function(df) {
   df %>% 
-  dplyr::mutate(datetime = as.POSIXct("2017-05-01", tz = "UTC") + .data$time*24*3600,
-                month_last_day = lubridate::days_in_month(.data$datetime),
-                year = lubridate::year(.data$datetime),
-                month = lubridate::month(.data$datetime), 
-                year_hydrologic = ifelse(.data$month <= 10, .data$year, .data$year + 1),
-                yearmonth = as.Date(sprintf("%s-%02d", 
-                                            format(.data$datetime, format = "%Y-%m"),
-                                            .data$month_last_day)),
-                date = as.Date(.data$datetime),
-                time_integer = as.integer(.data$time))
+    dplyr::mutate(
+      datetime = as.POSIXct("2017-05-01", tz = "UTC") + .data$time * 24 * 3600,
+      month_last_day = lubridate::days_in_month(.data$datetime),
+      year = lubridate::year(.data$datetime),
+      month = lubridate::month(.data$datetime), 
+      year_hydrologic = ifelse(.data$month <= 10, .data$year, .data$year + 1),
+      yearmonth = as.Date(sprintf(
+        "%s-%02d", 
+        format(.data$datetime, format = "%Y-%m"),
+        .data$month_last_day
+      )),
+      date = as.Date(.data$datetime),
+      time_integer = as.integer(.data$time)
+    )
 }
 
-aggregate_solute <- function(solute, col_aggr = "date")  {
+aggregate_solute <- function(solute, col_aggr = "date")
+{
   solute %>% 
-  add_times() %>% 
-  dplyr::mutate(diff_time = c(0, diff(.data$time)),
-                time_c_top = .data$diff_time * .data$c_top,
-                time_c_bot = .data$diff_time * .data$c_bot,
-                time_integer = as.integer(.data$time)) %>% 
-  dplyr::group_by(.data[[col_aggr]]) %>% 
-  dplyr::summarise(diff_time = sum(.data$diff_time),
-                   c_top = sum(.data$time_c_top)/diff_time,
-                   c_bot = sum(.data$time_c_bot)/diff_time) %>% 
-  dplyr::relocate(.data[[col_aggr]])
+    add_times() %>% 
+    dplyr::mutate(
+      diff_time = c(0, diff(.data$time)),
+      time_c_top = .data$diff_time * .data$c_top,
+      time_c_bot = .data$diff_time * .data$c_bot,
+      time_integer = as.integer(.data$time)
+    ) %>% 
+    dplyr::group_by(.data[[col_aggr]]) %>% 
+    dplyr::summarise(
+      diff_time = sum(.data$diff_time),
+      c_top = sum(.data$time_c_top) / diff_time,
+      c_bot = sum(.data$time_c_bot) / diff_time
+    ) %>% 
+    dplyr::relocate(.data[[col_aggr]])
 }
-
-
-
-
 ```
 
-
 ```{r plot_results_solute_static, eval=is_windows}
-
-plot_solute <- function(solute_aggr, y_label = "Share of 'clearwater' (%)") {
-
-x_col <- names(solute_aggr)[1]
-
-solute_aggr %>%
-  tidyr::pivot_longer(cols = c("c_top", "c_bot"),
-                      names_to = "parameter",
-                      values_to = "value") %>%
-  dplyr::filter(!is.na(.data$value)) %>% 
-  ggplot2::ggplot(mapping = ggplot2::aes(x = .data[[x_col]],
-                                         y = .data$value,
-                                         col = .data$parameter )) +
-  ggplot2::geom_point() +
-  ggplot2::geom_line() +  
-  ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1), 
-                              limits = c(0,1)) +
-  ggplot2::theme_bw() +
-  ggplot2::labs(y = y_label)
+plot_solute <- function(solute_aggr, y_label = "Share of 'clearwater' (%)")
+{
+  x_col <- names(solute_aggr)[1L]
+  
+  solute_aggr %>%
+    tidyr::pivot_longer(
+      cols = c("c_top", "c_bot"),
+      names_to = "parameter",
+      values_to = "value"
+    ) %>%
+    dplyr::filter(!is.na(.data$value)) %>% 
+    ggplot2::ggplot(mapping = ggplot2::aes(
+      x = .data[[x_col]],
+      y = .data$value,
+      col = .data$parameter
+    )) +
+    ggplot2::geom_point() +
+    ggplot2::geom_line() +  
+    ggplot2::scale_y_continuous(
+      labels = scales::percent_format(accuracy = 1), 
+      limits = c(0, 1)
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::labs(y = y_label)
 }
 
-solute_date <- aggregate_solute(solute, col_aggr = "date") 
-solute_yearmonth <- aggregate_solute(solute, col_aggr = "yearmonth")
-solute_year_hydrologic <- aggregate_solute(solute, col_aggr = "year_hydrologic") %>%
-  dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
-DT::datatable(solute_year_hydrologic)
+solute_date <- aggregate_solute(
+  solute, 
+  col_aggr = "date"
+)
 
+solute_yearmonth <- aggregate_solute(
+  solute, 
+  col_aggr = "yearmonth"
+)
+
+solute_year_hydrologic <- aggregate_solute(
+  solute, 
+  col_aggr = "year_hydrologic"
+) %>%
+  dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
+
+DT::datatable(solute_year_hydrologic)
 
 solute_date_plot <- plot_solute(solute_date)
 solute_yearmonth_plot <- plot_solute(solute_yearmonth)
 
 solute_date_plot
 solute_yearmonth_plot
-
-
 ```
 
 ```{r read_results_tlevel, eval=is_windows}
@@ -417,72 +450,92 @@ t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
 t_level
 
 ## t_level aggregate
-aggregate_tlevel <- function(t_level, 
-                             col_aggr = "date")  {
+aggregate_tlevel <- function(t_level, col_aggr = "date")
+{
   tmp <- t_level %>%
-  dplyr::select(.data$time, tidyselect::starts_with("sum"))
+    dplyr::select(.data$time, tidyselect::starts_with("sum"))
   
-  cols_to_drop <- names(tmp)[-1]
+  cols_to_drop <- names(tmp)[-1L]
   
-t2 <- stats::setNames(lapply(cols_to_drop, function(col_name) {
-    c(tmp[[col_name]][1], diff(tmp[[col_name]]))
-    }),
-  stringr::str_remove(cols_to_drop, "^sum_")) %>% 
+  t2 <- lapply(cols_to_drop, function(col_name) {
+    c(tmp[[col_name]][1L], diff(tmp[[col_name]]))
+  }) %>% 
+    stats::setNames(stringr::str_remove(cols_to_drop, "^sum_")) %>% 
     dplyr::bind_cols()
-
-tmp2 <- dplyr::bind_cols(tmp[, "time"], t2)
-
-diff_time <- c(0,diff(tmp$time))
-
-tmp3 <- tibble::tibble(time = tmp$time,
-               diff_time = diff_time) %>% 
-  dplyr::bind_cols(t2)
-
-tmp3 %>% 
-  add_times() %>% 
-  dplyr::group_by(.data[[col_aggr]]) %>% 
-  dplyr::summarise(dplyr::across(tidyselect::all_of(names(tmp3)[-1]), ~ sum(.x))) %>% 
-  dplyr::relocate(.data[[col_aggr]])
-                      
+  
+  tmp2 <- dplyr::bind_cols(tmp[, "time"], t2)
+  
+  diff_time <- c(0, diff(tmp$time))
+  
+  tmp3 <- tibble::tibble(
+    time = tmp$time,
+    diff_time = diff_time
+  ) %>% 
+    dplyr::bind_cols(t2)
+  
+  tmp3 %>% 
+    add_times() %>% 
+    dplyr::group_by(.data[[col_aggr]]) %>% 
+    dplyr::summarise(
+      dplyr::across(
+        tidyselect::all_of(names(tmp3)[-1L]), ~ sum(.x)
+      )
+    ) %>% 
+    dplyr::relocate(.data[[col_aggr]])
 }
 
-
 tlevel_aggr_date <- aggregate_tlevel(t_level)
-tlevel_aggr_yearmonth <- aggregate_tlevel(t_level, col_aggr = "yearmonth")
-tlevel_aggr_year_hydrologic <- aggregate_tlevel(t_level, col_aggr = "year_hydrologic") %>% 
+
+tlevel_aggr_yearmonth <- aggregate_tlevel(
+  t_level, 
+  col_aggr = "yearmonth"
+)
+
+tlevel_aggr_year_hydrologic <- aggregate_tlevel(
+  t_level, 
+  col_aggr = "year_hydrologic"
+) %>% 
   dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
 
 DT::datatable(tlevel_aggr_year_hydrologic)
 ```
 
-
 ```{r plot_waterbalance_static}
-
-plot_waterbalance <- function(tlevel_aggr, 
-                              y_label = "Water Balance Component (mm)",
-                              unit_org = "cm",
-                              unit_target = "mm") {
-
-x_col <- names(tlevel_aggr)[1]
-
-tlevel_aggr %>%
-  tidyr::pivot_longer(cols = tidyselect::all_of(tidyselect::all_of(names(tlevel_aggr)[c(-1, -2)])),
-                      names_to = "parameter", 
-                      values_to = "value") %>% 
-  dplyr::mutate(value = measurements::conv_unit(.data$value, 
-                                                from = unit_org,
-                                                to = unit_target)) %>% 
-  dplyr::filter(.data$parameter %in% c("infil", "evap", "run_off")) %>% 
-  ggplot2::ggplot(mapping = ggplot2::aes(x = .data[[x_col]],
-                                         y = .data$value,
-                                         col = .data$parameter )) +
-  ggplot2::geom_point() +
-  ggplot2::geom_line() +  
-  ggplot2::theme_bw() +
-  ggplot2::labs(y = y_label)
+plot_waterbalance <- function(
+    tlevel_aggr, 
+    y_label = "Water Balance Component (mm)",
+    unit_org = "cm",
+    unit_target = "mm"
+)
+{
+  x_col <- names(tlevel_aggr)[1]
+  
+  tlevel_aggr %>%
+    tidyr::pivot_longer(
+      cols = tidyselect::all_of(
+        tidyselect::all_of(names(tlevel_aggr)[c(-1, -2)])
+      ),
+      names_to = "parameter", 
+      values_to = "value"
+    ) %>% 
+    dplyr::mutate(
+      value = measurements::conv_unit(
+        .data$value, 
+        from = unit_org, 
+        to = unit_target
+      )
+    ) %>% 
+    dplyr::filter(.data$parameter %in% c("infil", "evap", "run_off")) %>% 
+    ggplot2::ggplot(mapping = ggplot2::aes(
+      x = .data[[x_col]],
+      y = .data$value,
+      col = .data$parameter
+    )) +
+    ggplot2::geom_point() +
+    ggplot2::geom_line() +  
+    ggplot2::theme_bw() +
+    ggplot2::labs(y = y_label)
 }
-
-
 
 wb_date_plot <- plot_waterbalance(tlevel_aggr_date)
 wb_yearmonth_plot <- plot_waterbalance(tlevel_aggr_yearmonth)
@@ -491,20 +544,14 @@ wb_yearhydrologic_plot <- plot_waterbalance(tlevel_aggr_year_hydrologic)
 wb_date_plot
 wb_yearmonth_plot
 wb_yearhydrologic_plot
-
 ```
-
 
 ```{r plot_waterbalance_interactive}
-
 plotly::ggplotly(wb_date_plot)
 plotly::ggplotly(wb_yearmonth_plot)
-
 ```
 
-
 ```{r read_results_other, eval=is_windows}
-
 a_level <- kwb.hydrus1d::read_alevel(paths$a_level)
 a_level
 ```
