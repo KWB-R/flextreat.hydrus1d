@@ -3,7 +3,7 @@
 \docType{data}
 \name{evapo_p}
 \alias{evapo_p}
-\title{Potential Evoporation: Daily}
+\title{DWD: Potential Evaporation, Daily}
 \format{
 A data.frame with 1461 rows and 10 variables:
 \describe{
@@ -30,7 +30,7 @@ between 2017-01-01 and 2020-12-31
 \examples{
 \dontrun{
 ### Data download
-remotes::install_github("kwb-r/kwb.dwd@dev")
+remotes::install_github("kwb-r/kwb.dwd")
 shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
 package = "flextreat.hydrus1d")
 

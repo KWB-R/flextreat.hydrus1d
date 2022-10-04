@@ -30,11 +30,11 @@ used for irrigation (default: 0)}
 tibble with peoered
 }
 \description{
-Prepares atmospheric input data structure required by HYDRUS1D
-and by default uses a conservative tracer in irrigation source "clearwater" (
-set to 1) in order to track the share of cleaned wastewater in the system inflow
-rate (as "Prec" column is a combined value of irrigation using either "groundwater"
-or "clearwater" and real "rainfall").
+Prepares atmospheric input data structure required by HYDRUS1D and by default
+uses a conservative tracer in irrigation source "clearwater" ( set to 1) in
+order to track the share of cleaned wastewater in the system inflow rate (as
+"Prec" column is a combined value of irrigation using either "groundwater" or
+"clearwater" and real "rainfall").
 }
 \examples{
 atm <- prepare_atmosphere_data()
