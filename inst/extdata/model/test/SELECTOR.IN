@@ -14,7 +14,7 @@ NMat    NLay  CosAlpha
   2       2       1
 *** BLOCK B: WATER FLOW INFORMATION ************************************
 MaxIt   TolTh   TolH       (maximum number of iterations and tolerances)
-  10    0.001      1
+  20    0.001      1
 TopInf WLayer KodTop InitCond
  t     t      -1       t
 BotInf qGWLF FreeD SeepF KodBot DrainF  hSeep
@@ -24,11 +24,11 @@ BotInf qGWLF FreeD SeepF KodBot DrainF  hSeep
     Model   Hysteresis
       0          0
    thr     ths    Alfa      n         Ks       l
- 0.0449  0.3833  0.0385  3.2783     619.18     0.5 
-0.04985 0.377475 0.03485  3.8696    1188.05     0.5 
+0.0480794 0.367047 0.0334944 3.03224    726.812     0.5 
+0.048609 0.362313 0.0355833 3.99447     1325.3     0.5 
 *** BLOCK C: TIME INFORMATION ******************************************
         dt       dtMin       dtMax     DMul    DMul2  ItMin ItMax  MPL
-          1      1e-005           1     1.3     0.7     3     7   250
+       0.05      1e-005         0.1     1.1     0.7   3     7   250
       tInit        tMax
           0        1279
   lPrintD  nPrintSteps tPrintInterval lEnter
@@ -75,10 +75,10 @@ TPrint(1),TPrint(2),...,TPrint(MPL)
      334.34       335.8      337.26      338.72      340.18      341.64 
       343.1      344.56      346.02      347.48      348.94       350.4 
      351.86      353.32      354.78      356.24       357.7      359.16 
-     360.62      362.08      363.54         365 
+     360.62      362.08      363.54        1279 
 *** BLOCK F: SOLUTE TRANSPORT INFORMATION *****************************************************
  Epsi  lUpW  lArtD lTDep    cTolA    cTolR   MaxItC    PeCr  No.Solutes  lTort   iBacter   lFiltr  nChPar
-  0.5     f     f     f         0         0     1        2        1       t       0        f       16
+  0.5     t     f     f         0         0     1        0        1       t       0        f       16
 iNonEqul lWatDep lDualNEq lInitM  lInitEq lTort lDummy  lDummy  lDummy  lDummy  lCFTr
    0       f       f       f       f       f       t       f       f       f       f
      Bulk.d.     DisperL.      Frac      Mobile WC (1..NMat)
@@ -90,7 +90,7 @@ iNonEqul lWatDep lDualNEq lInitM  lInitEq lTort lDummy  lDummy  lDummy  lDummy  
           0           0           1           0           0           0           0           0           0           0           0           0           0           0 
           0           0           1           0           0           0           0           0           0           0           0           0           0           0 
       kTopSolute  SolTop    kBotSolute  SolBot
-         -1           0           0           0 
+          1           0           0           0 
       tPulse
         365
 *** END OF INPUT FILE 'SELECTOR.IN' ************************************

@@ -1,4 +1,4 @@
-#' Potential Evoporation: Daily
+#' DWD Daily Datasets
 #'
 #' Median daily potential evaporation for irrigation area (i.e. ~44km2), based
 #' on 1x1km2 grids of DWD. Downloaded with \code{\link[kwb.dwd]{read_daily_data_over_shape}}
@@ -20,7 +20,7 @@
 #' @examples
 #' \dontrun{
 #' ### Data download
-#' remotes::install_github("kwb-r/kwb.dwd@@dev")
+#' remotes::install_github("kwb-r/kwb.dwd")
 #' shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
 #' package = "flextreat.hydrus1d")
 #'
