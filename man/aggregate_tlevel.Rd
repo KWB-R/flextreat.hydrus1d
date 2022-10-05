@@ -11,7 +11,7 @@ aggregate_tlevel(
 )
 }
 \arguments{
-\item{t_level}{t_level}
+\item{t_level}{t_level as retrieved by \code{\link[kwb.hydrus1d]{read_tlevel}}}
 
 \item{sim_datetime_start}{simulation start as datetime object (default:
 as.POSIXct("2017-05-01", tz = "UTC"))}

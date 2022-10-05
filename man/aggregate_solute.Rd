@@ -11,7 +11,7 @@ aggregate_solute(
 )
 }
 \arguments{
-\item{solute}{solute}
+\item{solute}{solute as retrieved by \code{\link[kwb.hydrus1d]{read_solute}}}
 
 \item{sim_datetime_start}{simulation start as datetime object (default:
 as.POSIXct("2017-05-01", tz = "UTC"))}
