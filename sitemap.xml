@@ -7,6 +7,9 @@
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/index.html</loc>
   </url>
   <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_no-irrigation.html</loc>
+  </url>
+  <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_python.html</loc>
   </url>
   <url>
@@ -28,6 +31,18 @@
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/news/index.html</loc>
   </url>
   <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/add_times.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_atmosphere.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_solute.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_tlevel.html</loc>
+  </url>
+  <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/atmosphere.html</loc>
   </url>
   <url>
@@ -38,6 +53,9 @@
   </url>
   <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/evapo_p.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/get_hydrologic_years.html</loc>
   </url>
   <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/index.html</loc>
@@ -52,7 +70,16 @@
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/pipe.html</loc>
   </url>
   <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_atmosphere.html</loc>
+  </url>
+  <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_monthly_atm.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_solute.html</loc>
+  </url>
+  <url>
+    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_waterbalance.html</loc>
   </url>
   <url>
     <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/precipitation_daily.html</loc>
