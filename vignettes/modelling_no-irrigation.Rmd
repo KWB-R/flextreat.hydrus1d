@@ -1,10 +1,10 @@
 ---
-title: "Modelling with R: Status Quo (2017-05-01 - 2020-10-31)"
+title: "Modelling with R: No Irrigation (2017-05-01 - 2020-10-31)"
 subtitle: 
 author: "Michael Rustler"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Modelling with R: Status Quo (2017-05-01 - 2020-10-31)}
+  %\VignetteIndexEntry{Modelling with R: No Irrigation (2017-05-01 - 2020-10-31)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -55,9 +55,9 @@ install.packages('flextreat.hydrus1d')
 paths_list <- list(
   extdata = system.file("extdata", package = "flextreat.hydrus1d"),
   exe_dir = "<extdata>/model",
-  scenario = "status-quo",
   model_name = "test",
   model_dir = "<exe_dir>/<model_name>",
+  scenario = "status-quo_no-irrigation",
   atmosphere = "<model_dir>/ATMOSPH.IN",
   a_level = "<model_dir>/A_LEVEL.out",
   t_level = "<model_dir>/T_LEVEL.out",
@@ -273,6 +273,10 @@ Based on the atmospheric input data (see [Chapter: Atmospheric Boundary Conditio
 ```{r prepare_atmosphere, eval=is_windows}
 
 atm <- flextreat.hydrus1d::prepare_atmosphere_data()
+### Set irrigation to 0 mm/day 
+atm$groundwater.mmPerDay <- 0 
+atm$clearwater.mmPerDay <- 0
+
 atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
 
 atm_selected_hydro_wide <- flextreat.hydrus1d::aggregate_atmosphere(atm_selected, "wide")
@@ -290,12 +294,11 @@ kwb.utils::preparePdf(pdfFile = sprintf("boundaries-temporal_%s.pdf",
 atm_hydro_plot
 dev.off()
 
-
 atm_prep <- flextreat.hydrus1d::prepare_atmosphere(
   atm_selected, 
-  conc_irrig_clearwater = 1, # use as "clearwater" tracer 
+  conc_irrig_clearwater = 0, # use as "clearwater" tracer 
   conc_irrig_groundwater = 0, 
-  conc_rain = 0)
+  conc_rain = 1)
 
 atmos <- kwb.hydrus1d::write_atmosphere(
   atm = atm_prep,
@@ -320,7 +323,6 @@ by `HYDRUS1D`. Due to the fact, that `irrigation rates` (i.e. sum of `clearwater
 ```{r input_atm_prep, eval=is_windows}
 DT::datatable(atm_prep)
 ```
-
 
 ### Run Model
 

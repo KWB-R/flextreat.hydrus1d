@@ -24,8 +24,10 @@ Imports:
     kwb.utils,
     lubridate,
     magrittr,
+    measurements,
     pkgbuild,
     rlang,
+    scales,
     soilDB,
     stringr,
     tibble,
@@ -34,12 +36,11 @@ Imports:
 Suggests: 
     covr,
     DT,
-    ggplot2,
     knitr,
     plotly,
     kwb.dwd,
     kwb.python,
-    measurements,
+    reticulate,
     rmarkdown
 VignetteBuilder: 
     knitr
