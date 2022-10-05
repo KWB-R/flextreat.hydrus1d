@@ -7,7 +7,7 @@
 plot_solute(solute_aggr, y_label = "Share of 'clearwater' (\%)")
 }
 \arguments{
-\item{solute_aggr}{solute_aggr as retrieved by \code{\link{}}}
+\item{solute_aggr}{solute_aggr as retrieved by \code{\link{aggregate_solute}}}
 
 \item{y_label}{y_label (default: "Share of 'clearwater' (\%)")}
 }

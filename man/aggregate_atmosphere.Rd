@@ -7,7 +7,7 @@
 aggregate_atmosphere(atm_selected, format = "wide")
 }
 \arguments{
-\item{atm_selected}{atm_selected}
+\item{atm_selected}{atm_selected as retrieved by \code{\link{prepare_atmosphere_data}}}
 
 \item{format}{"wide" or "long}
 }

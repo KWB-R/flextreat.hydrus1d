@@ -1,6 +1,6 @@
 #' Aggregate Atmosphere
 #' @description for hydrologic years
-#' @param atm_selected atm_selected
+#' @param atm_selected atm_selected as retrieved by \code{\link{prepare_atmosphere_data}}
 #' @param format "wide" or "long
 #'
 #' @return aggregated data
@@ -39,7 +39,7 @@ aggregate_atmosphere <- function(atm_selected, format = "wide") {
 
 #' Aggregate Solute
 #'
-#' @param solute solute
+#' @param solute solute as retrieved by \code{\link[kwb.hydrus1d]{read_solute}}
 #' @param sim_datetime_start simulation start as datetime object (default:
 #' as.POSIXct("2017-05-01", tz = "UTC"))
 #' @param col_aggr column to be aggregated. One of "date", "yearmonth", "year" or
@@ -58,15 +58,15 @@ aggregate_solute <- function(solute,
                   time_integer = as.integer(.data$time)) %>%
     dplyr::group_by(.data[[col_aggr]]) %>%
     dplyr::summarise(diff_time = sum(.data$diff_time),
-                     c_top = sum(.data$time_c_top)/diff_time,
-                     c_bot = sum(.data$time_c_bot)/diff_time) %>%
+                     c_top = sum(.data$time_c_top)/.data$diff_time,
+                     c_bot = sum(.data$time_c_bot)/.data$diff_time) %>%
     dplyr::relocate(.data[[col_aggr]])
 }
 
 #' Aggregate t_level
 #'
 #' @description  only for columns starting with "sum" and matching "volume"
-#' @param t_level t_level
+#' @param t_level t_level as retrieved by \code{\link[kwb.hydrus1d]{read_tlevel}}
 #' @param sim_datetime_start simulation start as datetime object (default:
 #' as.POSIXct("2017-05-01", tz = "UTC"))
 #' @param col_aggr column to be aggregated. One of "date", "yearmonth", "year" or

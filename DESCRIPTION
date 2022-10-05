@@ -28,7 +28,6 @@ Imports:
     pkgbuild,
     rlang,
     scales,
-    soilDB,
     stringr,
     tibble,
     tidyr,
@@ -41,7 +40,8 @@ Suggests:
     kwb.dwd,
     kwb.python,
     reticulate,
-    rmarkdown
+    rmarkdown,
+    soilDB
 VignetteBuilder: 
     knitr
 Remotes: 

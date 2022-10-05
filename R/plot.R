@@ -25,7 +25,7 @@ plot_atmosphere <- function(atm_selected_hydro_long) {
 
 #' Plot Solute
 #'
-#' @param solute_aggr solute_aggr as retrieved by \code{\link{}}
+#' @param solute_aggr solute_aggr as retrieved by \code{\link{aggregate_solute}}
 #' @param y_label y_label (default: "Share of 'clearwater' (%)")
 #'
 #' @return plot solute
