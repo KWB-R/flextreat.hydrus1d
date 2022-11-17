@@ -1,7 +1,7 @@
 url: https://kwb-r.github.io/flextreat.hydrus1d
 authors:
   Michael Rustler:
-    href: https://mrustl.de
+    href: https://www.kompetenz-wasser.de/en/ueber-uns/team/michael-rustler
   FlexTreat:
     href: https://www.kompetenz-wasser.de/en/forschung/projekte/flextreat
     html: <img src='https://bmbf-wave.de/Verbundprojekte+nach+Themenfeldern/Kommunales+Abwasser/FlexTreat-height-394-width-1389/_/Flextreat-Logo-300dpi.png'
@@ -22,3 +22,44 @@ template:
 development:
   mode: auto
 
+reference:
+  - title: Datasets
+    desc: >
+      Datasets availabe for HYDRUS-1D model
+    contents:
+      - atmosphere
+      - evapo_p
+      - irrigation
+      - materials
+      - precipitation_daily
+      - precipitation_hourly
+
+  - title: Prepare Input
+    desc: >
+      Functions for preparing HYDRUS-1D input files
+    contents:
+      - aggregate_atmosphere
+      - get_hydrologic_years
+      - prepare_atmosphere_data
+      - prepare_atmosphere
+
+  - title: Aggregate Output
+    desc: >
+      Functions for aggregating HYDRUS-1D output files
+    contents:
+      - aggregate_solute
+      - aggregate_tlevel
+
+  - title: Plot Output
+    desc: >
+      Functions for plotting HYDRUS-1D simulation results
+    contents:
+      - starts_with("plot_")
+
+  - title: Helper functions
+    desc: >
+      Helper functions for HYDRUS-1D
+    contents:
+      - add_times
+      - create_monthly_atm
+      - select_hydrologic_years
