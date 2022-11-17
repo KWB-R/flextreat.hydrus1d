@@ -350,43 +350,7 @@ runinf <- kwb.hydrus1d::read_runinf(paths$runinf)
 summary(runinf)
 ```
 
-
-#### Conservative Tracer
-
-
-```{r read_results_solute, eval=is_windows}
-
-solute <- kwb.hydrus1d::read_solute(paths$solute) 
-
-solute_date <- flextreat.hydrus1d::aggregate_solute(solute, 
-                                                    col_aggr = "date") 
-solute_yearmonth <- flextreat.hydrus1d::aggregate_solute(solute, 
-                                                         col_aggr = "yearmonth")
-solute_year_hydrologic <- flextreat.hydrus1d::aggregate_solute(solute,
-                                                               col_aggr = "year_hydrologic") %>%
-  dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
-
-DT::datatable(solute_year_hydrologic)
-
-
-```
-
-
-```{r plot_results_solute_static, eval=is_windows}
-
-solute_date_plot <- flextreat.hydrus1d::plot_solute(solute_date)
-solute_yearmonth_plot <- flextreat.hydrus1d::plot_solute(solute_yearmonth)
-
-solute_date_plot
-solute_yearmonth_plot
-
-kwb.utils::preparePdf(pdfFile = sprintf("solute_yearmonth_%s.pdf", 
-                                        paths$scenario),
-                      width.cm = 22, 
-                      height.cm = 10)
-solute_yearmonth_plot
-dev.off()
-```
+#### Water Balance 
 
 ```{r read_results_tlevel, eval=is_windows}
 t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)

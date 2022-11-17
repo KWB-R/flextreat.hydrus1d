@@ -387,6 +387,8 @@ solute_yearmonth_plot
 dev.off()
 ```
 
+#### Water Balance 
+
 ```{r read_results_tlevel, eval=is_windows}
 t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
 t_level
