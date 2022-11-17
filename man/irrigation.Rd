@@ -31,7 +31,11 @@ install.packages(c("dplyr", "tidyr"))
 irrigation_file <- system.file("extdata/input-data/Beregnungsmengen_AVB.csv",
 package = "flextreat.hydrus1d")
 
-irrigation_area <- rgdal::readOGR(dsn = shape_file)
+# irrigation_area <- rgdal::readOGR(dsn = shape_file)
+# irrigation_area_sqm <- irrigation_area$area  # 44111068m2
+
+## 2700ha (https://www.abwasserverband-bs.de/de/was-wir-machen/verregnung/)
+irrigation_area_sqm <- 27000000
 
 irrigation <- read.csv2(irrigation_file) \%>\%
   dplyr::select(- .data$Monat) \%>\%
@@ -51,7 +55,7 @@ irrigation <- read.csv2(irrigation_file) \%>\%
                                                     replacements = list("Grundwasser" = "groundwater.mmPerDay",
                                                                         "Klarwasser" = "clearwater.mmPerDay")),
                 irrigation_cbmPerDay = .data$irrigation_m3/.data$days_in_month,
-                irrigation_area_sqm = irrigation_area$area,
+                irrigation_area_sqm = irrigation_area_sqm,
                 irrigation_mmPerDay = 1000*irrigation_cbmPerDay/irrigation_area_sqm) \%>\%
   dplyr::select(.data$year,
                 .data$month,
