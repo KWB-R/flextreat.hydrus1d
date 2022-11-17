@@ -27,7 +27,6 @@ reference:
     desc: >
       Datasets availabe for HYDRUS-1D model
     contents:
-      - atmosphere
       - evapo_p
       - irrigation
       - materials
