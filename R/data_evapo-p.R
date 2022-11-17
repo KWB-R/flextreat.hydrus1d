@@ -1,4 +1,4 @@
-#' DWD Daily Datasets
+#' DWD: Potential Evaporation, Daily
 #'
 #' Median daily potential evaporation for irrigation area (i.e. ~44km2), based
 #' on 1x1km2 grids of DWD. Downloaded with \code{\link[kwb.dwd]{read_daily_data_over_shape}}
