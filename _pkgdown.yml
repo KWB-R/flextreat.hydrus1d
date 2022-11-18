@@ -2,6 +2,9 @@ url: https://kwb-r.github.io/flextreat.hydrus1d
 authors:
   Michael Rustler:
     href: https://www.kompetenz-wasser.de/en/ueber-uns/team/michael-rustler
+  Hauke Sonnenberg:
+    href: https://www.kompetenz-wasser.de/en/ueber-uns/team/hauke-sonnenberg
+
   FlexTreat:
     href: https://www.kompetenz-wasser.de/en/forschung/projekte/flextreat
     html: <img src='https://bmbf-wave.de/Verbundprojekte+nach+Themenfeldern/Kommunales+Abwasser/FlexTreat-height-394-width-1389/_/Flextreat-Logo-300dpi.png'
@@ -27,7 +30,6 @@ reference:
     desc: >
       Datasets availabe for HYDRUS-1D model
     contents:
-      - atmosphere
       - evapo_p
       - irrigation
       - materials
