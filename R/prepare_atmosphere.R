@@ -45,7 +45,7 @@ prepare_atmosphere <- function(
       evapo_p_mean_cm = tidyr::replace_na(.data$evapo_p_mean_mm, 0) / 10
     ) %>%
     dplyr::mutate(
-      tAtm = dplyr::row_number() - 1,
+      tAtm = dplyr::row_number(),
       Prec = (
         .data$rain_mm + .data$groundwater.mmPerDay + .data$clearwater.mmPerDay
       ) / 10,
