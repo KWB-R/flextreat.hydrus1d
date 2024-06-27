@@ -1,3 +1,32 @@
+#' Helper function: combine dataframes
+#'
+#' @param df_list df_list
+#'
+#' @return df
+#' @export
+#'
+combine_dataframes <- function(df_list) {
+  # Überprüfen, ob die Liste nicht leer ist
+  if (length(df_list) == 0) {
+    stop("Die Liste der DataFrames ist leer")
+  }
+
+  # Überprüfen, ob alle Elemente in der Liste DataFrames sind
+  if (!all(sapply(df_list, is.data.frame))) {
+    stop("Alle Elemente in der Liste müssen DataFrames sein")
+  }
+
+  # Kombiniere die DataFrames mit left_join
+  combined_df <- Reduce(function(x, y) dplyr::left_join(x,
+                                                        y,
+                                                        by = intersect(names(x),
+                                                                       names(y))),
+                        df_list)
+
+  return(combined_df)
+}
+
+
 #' Recalculate c_top with virtual storage
 #'
 #' @param atm atmosphere time series data
@@ -18,8 +47,12 @@ recalculate_ctop_with_virtualstorage <- function(atm,
 
   tlevel_aggr_date <- aggregate_tlevel(tlevel)
 
+  c_tops <- names(atm)[stringr::str_detect(names(atm), "cTop")]
+
+vs_list <- lapply(seq_len(length(c_tops)), function(i) {
+
   # Datum in Date-Format umwandeln
-  data <- atm %>%
+  data <- atm[,c("tAtm", "Prec", c_tops[i])] %>%
     dplyr::bind_cols(tibble::tibble(
       evapo_r_modelled = tlevel_aggr_date$evap[seq_len(nrow(atm))],
       v_top = tlevel_aggr_date$v_top[seq_len(nrow(atm))])) %>%
@@ -52,7 +85,8 @@ recalculate_ctop_with_virtualstorage <- function(atm,
         starts_with("Prec_c"),
         .names = "{.col}_{.fn}",
         .fns = list(first = ~first(.), sum = ~sum(.))
-      )
+      ),
+      .groups = "drop"
     )
 
   result2 <- result %>%
@@ -75,18 +109,38 @@ recalculate_ctop_with_virtualstorage <- function(atm,
                   .names = "cor_{col}")
     )
 
-  data$cTop[data$store == 1] <- 0
+  data[data$store == 1, c_tops[i]] <- 0
+
+  cor_Prec_sel <- sprintf("cor_Prec_%s_first", c_tops[i])
 
   result3 <- data %>%
     dplyr::left_join(result2 %>%
-                       dplyr::select(group, tAtm_start, cor_Prec_cTop_first),
+                       dplyr::select(tidyselect::all_of(c("group",
+                                                        "tAtm_start",
+                                                        cor_Prec_sel))),
                      by = c("tAtm" = "tAtm_start")) %>%
-    dplyr::mutate(cTop = dplyr::if_else(store == 0 & !is.na(cor_Prec_cTop_first),
-                                        cor_Prec_cTop_first,
-                                        cTop))
+    dplyr::mutate(!!sym(c_tops[i]) := dplyr::if_else(store == 0 & !is.na(.data[[cor_Prec_sel]]),
+                                               .data[[cor_Prec_sel]],
+                                               .data[[c_tops[i]]]))
 
 
   result3
+  })
+
+
+vs_list_df <- lapply(seq_len(length(c_tops)), function(i) {
+
+vs_list[[i]][,c("tAtm", c_tops[i])]
+
+})
+
+
+vs_df <- combine_dataframes(df_list = vs_list_df)
+
+
+list(list = vs_list,
+     df = vs_df)
+
 }
 
 # result4 <- dplyr::left_join(atm[,"tAtm"],
