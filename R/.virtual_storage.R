@@ -7,63 +7,39 @@ paths_list <- list(
   #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
   #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
   exe_dir = "<root_local>",
-  model_name = "test_fracht1_org", #"1a2a_BTA_korr_test_40d",
+  model_name = "test_fracht1", #"1a2a_BTA_korr_test_40d",
+  model_gui_path = "<exe_dir>/<model_name>.h1d",
+  modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
   model_dir = "<exe_dir>/<model_name>",
+  model_dir_vs = "<exe_dir>/<model_name>_vs",
   scenario = "xxx",
   atmosphere = "<model_dir>/ATMOSPH.IN",
+  atmosphere_vs = "<model_dir_vs>/ATMOSPH.IN",
   a_level = "<model_dir>/A_LEVEL.out",
   profile = "<model_dir>/PROFILE.dat",
   obs_node = "<model_dir>/Obs_Node.out",
   balance = "<model_dir>/BALANCE.out",
   t_level = "<model_dir>/T_LEVEL.out",
+  t_level_vs = "<model_dir_vs>/T_LEVEL.out",
   runinf = "<model_dir>/Run_Inf.out",
   solute_id = "1",
   solute = "<model_dir>/solute<solute_id>.out",
+  solute_vs = "<model_dir_vs>/solute<solute_id>.out",
   soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
 )
 
 
 paths <- kwb.utils::resolve(paths_list)
 
+fs::dir_copy(paths$model_dir, paths$model_dir_vs, overwrite = TRUE)
+fs::file_copy(paths$model_gui_path, paths$modelvs_gui_path, overwrite = TRUE)
 
-atmos <- kwb.hydrus1d::read_atmosph(paths$atmosphere)
-
-
-#atmos$data$cTop <- atmos$data$cTop*1000
-evap <- atmos$data$rSoil
-atmos$data$rSoil <- tlevel_aggr_date$evap[-1281]
-
-
-condition <- atmos$data$Prec - atmos$data$rSoil < 0
-
-
-atm_default <- atmos
-
-#result2$tAtm_start
-
-
-#atmos$data$cTop[result2$tAtm_start] <- dplyr::coalesce(result2$cor_Prec_cTop_first, 0)
-
-#atmos$data$cTop <- result3$cTop
-atmos$data$cTop <- vs_atm$cTop
-
-#atmos$data$rSoil[condition]  <- dplyr::if_else(atmos$data$Prec[condition] > 0.1,
-#                                               atmos$data$Prec[condition] - 0.1,
-#                                               0)
-
-writeLines(kwb.hydrus1d::write_atmosphere(atm = atmos$data),
-           paths$atmosphere)
-
-
-
-View(atmos$data)
 
 kwb.hydrus1d::run_model(model_path = paths$model_dir)
 
-solute <- kwb.hydrus1d::read_solute(paths$solute) %>%
-  dplyr::mutate(difftime = c(0,diff(time)))
+atmos <- kwb.hydrus1d::read_atmosph(paths$atmosphere)
 
-(1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop)) * 100
+atm_default <- atmos
 
 tlevel <- kwb.hydrus1d::read_tlevel(paths$t_level)
 
@@ -71,10 +47,27 @@ vs_atm <- flextreat.hydrus1d::recalculate_ctop_with_virtualstorage(
   atm = atm_default$data,
   tlevel = tlevel,
   crit_v_top = - 0.05
-  )
+)
+
+atmos$data$cTop <- vs_atm$cTop
 
 
-which(atmos$data$Prec - tlevel_aggr_date$evap[-1281] < 0)
+writeLines(kwb.hydrus1d::write_atmosphere(atm = atmos$data),
+           paths$atmosphere_vs)
+
+
+kwb.hydrus1d::run_model(model_path = paths$model_dir_vs)
+
+solute <- kwb.hydrus1d::read_solute(paths$solute) %>%
+  dplyr::mutate(difftime = c(0,diff(time)))
+
+(1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop)) * 100
+
+solute <- kwb.hydrus1d::read_solute(paths$solute_vs) %>%
+  dplyr::mutate(difftime = c(0,diff(time)))
+
+(1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop)) * 100
+
 
 sum(atmos$data$Prec)
 max(tlevel$sum_infil)
@@ -135,16 +128,17 @@ obsnode %>%
 
 profile <- kwb.hydrus1d::read_profile(paths$profile)
 
-obsnode %>%
+p <- obsnode %>%
   dplyr::left_join(profile[,c("node_id", "x")]) %>%
   dplyr::filter(variable == "conc1") %>%
-  ggplot2::ggplot(mapping = ggplot2::aes(x = time, y = value, col = as.factor(x))) +
+  ggplot2::ggplot(mapping = ggplot2::aes(x = time,
+                                         y = value,
+                                         col = as.factor(x))) +
   ggplot2::geom_point() +
   ggplot2::theme_bw()
 
-solute_aggr_date
+plotly::ggplotly(p)
+
+ssolute_aggr_date
 View(tlevel_aggr_date)
 View(solute_aggr_date)
-
-recalculate_ctop_with_virtualstorage(atm = atmos$data)
-
