@@ -38,7 +38,7 @@ combine_dataframes <- function(df_list) {
 #' @export
 #' @importFrom tibble tibble
 #' @importFrom dplyr across arrange first if_else lag group_by mutate summarize
-#' rename_with left_join
+#' rename_with left_join cur_column sym
 #' @importFrom tidyselect starts_with
 #' @importFrom stringr str_replace
 recalculate_ctop_with_virtualstorage <- function(atm,
@@ -102,10 +102,10 @@ vs_list <- lapply(seq_len(length(c_tops)), function(i) {
                   ~ (. + get(paste0("store_",
                                     stringr::str_replace(pattern = "_first",
                                                          replacement = "_sum",
-                                                         cur_column())))) / Prec_first,
+                                                         dplyr::cur_column())))) / Prec_first,
                   .names = "cor_{col}"),
            across(matches("^Prec_cTop.*_sum"),
-                  ~ (. + get(paste0("store_", cur_column()))) / Prec_sum,
+                  ~ (. + get(paste0("store_", dplyr::cur_column()))) / Prec_sum,
                   .names = "cor_{col}")
     )
 
@@ -119,7 +119,7 @@ vs_list <- lapply(seq_len(length(c_tops)), function(i) {
                                                         "tAtm_start",
                                                         cor_Prec_sel))),
                      by = c("tAtm" = "tAtm_start")) %>%
-    dplyr::mutate(!!sym(c_tops[i]) := dplyr::if_else(store == 0 & !is.na(.data[[cor_Prec_sel]]),
+    dplyr::mutate(!!dplyr::sym(c_tops[i]) := dplyr::if_else(store == 0 & !is.na(.data[[cor_Prec_sel]]),
                                                .data[[cor_Prec_sel]],
                                                .data[[c_tops[i]]]))
 
