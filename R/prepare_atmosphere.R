@@ -120,7 +120,7 @@ prepare_atmosphere <- function(
   }
 
   load_irrig_gw <- setNames(lapply(conc_irrig_groundwater,
-                                   function(x) x * inputs$groundwater.mmPerDay),
+                                   function(x) x * inputs$groundwater.cmPerDay),
                             nm = sprintf("load_irrig_gw_%d", seq_len(length(conc_irrig_groundwater)))) %>%
     dplyr::bind_cols()
 
@@ -132,7 +132,7 @@ prepare_atmosphere <- function(
 
 
   load_irrig_cw <- setNames(lapply(conc_irrig_clearwater,
-                                   function(x) x * inputs$clearwater.mmPerDay),
+                                   function(x) x * inputs$clearwater.cmPerDay),
                             nm = sprintf("load_irrig_cw_%d", seq_len(length(conc_irrig_clearwater)))) %>%
     dplyr::bind_cols()
 
@@ -143,7 +143,7 @@ prepare_atmosphere <- function(
   }
 
   load_rain <- setNames(lapply(conc_rain,
-                               function(x) x * inputs$rain_mm),
+                               function(x) x * inputs$rain.cmPerDay),
                         nm = sprintf("load_rain_%d", seq_len(length(conc_rain)))) %>%
     dplyr::bind_cols()
 
