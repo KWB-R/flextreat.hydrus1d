@@ -110,7 +110,24 @@ prepare_atmosphere <- function(
        conc_irrig_clearwater = conc_irrig_clearwater,
        conc_rain = conc_rain)
 
-  n_conc <- sapply(conc_paras, length)
+
+  is_vector <- sapply(conc_paras, is.vector)
+
+  n_conc <- sapply(seq_along(conc_paras), function(i) { if(is_vector[i]) {
+    length(conc_paras[[i]])
+    } else {
+      if(is.data.frame(conc_paras[[i]])) {
+        stopifnot(nrow(conc_paras[[i]]) == nrow(atm))
+        stopifnot(ncol(conc_paras[[i]]) <= 10)
+        ncol(conc_paras[[i]])
+      } else {
+        stop("unsupported data type")
+      }
+    }
+  })
+
+  names(n_conc) <- names(conc_paras)
+
 
   if (sum(n_conc > 1) > 1) {
     if(all(n_conc[n_conc > 1] != n_conc[n_conc > 1][1])) {
