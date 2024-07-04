@@ -26,6 +26,7 @@ Imports:
     lubridate,
     magrittr,
     measurements,
+    plotly,
     pkgbuild,
     rlang,
     scales,

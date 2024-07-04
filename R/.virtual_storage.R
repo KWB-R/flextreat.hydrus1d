@@ -8,7 +8,7 @@ paths_list <- list(
   #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
   #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
   exe_dir = "<root_local>",
-  model_name = "1a2a_tracer_3140", #"1a2a_BTA_korr_test_40d",
+  model_name = "1a2a_no-irrig_tracer_3140", #"1a2a_BTA_korr_test_40d",
   model_gui_path = "<exe_dir>/<model_name>.h1d",
   modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
   model_dir = "<exe_dir>/<model_name>",
@@ -39,13 +39,17 @@ fs::file_copy(paths$model_gui_path, paths$modelvs_gui_path, overwrite = TRUE)
 
 library(flextreat.hydrus1d)
 atm <- flextreat.hydrus1d::prepare_atmosphere_data()
+
+#no-irrigation
+atm[,c("groundwater.mmPerDay", "clearwater.mmPerDay")] <- 0
+
 atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
 # atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
-#                                        conc_irrig_clearwater = c(6738,
-#                                                                  875,
-#                                                                  4291,
-#                                                                  2884,
-#                                                                  1062),
+#                                        conc_irrig_clearwater = c(6.738,
+#                                                                  0.875,
+#                                                                  4.291,
+#                                                                  2.884,
+#                                                                  1.062),
 #                                        conc_irrig_groundwater = 0,
 #                                        conc_rain = 0
 #                                        )
@@ -115,6 +119,8 @@ writeLines(kwb.hydrus1d::write_atmosphere(atm = atmos$data),
 
 
 kwb.hydrus1d::run_model(model_path = paths$model_dir_vs)
+
+
 
 solute <- kwb.hydrus1d::read_solute(paths$solute_vs) %>%
   dplyr::mutate(difftime = c(0,diff(time)))
@@ -246,31 +252,31 @@ tibble::tibble(
   model_name = basename(dirname(path)),
   solute_name = kwb.utils::removeExtension(basename(path)),
   p01_top = mean(solute$time[which(max(solute$sum_cv_top)*0.005 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.015)], na.rm = TRUE),
-  p01_bot = mean(solute$time[which(- max(solute$sum_cv_top)*0.015 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.005)], na.rm = TRUE),
+  p01_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.015  &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.005)], na.rm = TRUE),
   p01_diff = p01_bot - p01_top,
   p05_top = mean(solute$time[which(max(solute$sum_cv_top)*0.045 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.055)], na.rm = TRUE),
-  p05_bot = mean(solute$time[which(- max(solute$sum_cv_top)*0.055 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.045)], na.rm = TRUE),
+  p05_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.055 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.045)], na.rm = TRUE),
   p05_diff = p05_bot - p05_top,
   p10_top = mean(solute$time[which(max(solute$sum_cv_top)*0.09 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.11)], na.rm = TRUE),
-  p10_bot = mean(solute$time[which(- max(solute$sum_cv_top)*0.11 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.09)], na.rm = TRUE),
+  p10_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.11 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.09)], na.rm = TRUE),
   p10_diff = p10_bot - p10_top,
   p25_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.24 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.26)], na.rm = TRUE),
-  p25_bot = mean(solute$time[which(- max(solute$sum_cv_top)*0.26 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.24)], na.rm = TRUE),
+  p25_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.26 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.24)], na.rm = TRUE),
   p25_diff = p25_bot - p25_top,
   p50_top = mean(solute$time[which(max(solute$sum_cv_top)*0.48 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.52)], na.rm = TRUE),
-  p50_bot = mean(solute$time[which(- max(solute$sum_cv_top)*0.52 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.48)], na.rm = TRUE),
+  p50_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.520 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.48)], na.rm = TRUE),
   p50_diff = p50_bot - p50_top,
-  p75_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.73 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.77)], na.rm = TRUE),
-  p75_bot =mean(solute$time[which(- max(solute$sum_cv_top)*0.77 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.73)], na.rm = TRUE),
+  p75_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.725 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.775)], na.rm = TRUE),
+  p75_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.775 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.725)], na.rm = TRUE),
   p75_diff = p75_bot - p75_top,
   p90_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.88 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.92)], na.rm = TRUE),
-  p90_bot = mean(solute$time[which(- max(solute$sum_cv_top)*0.92 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.88)], na.rm = TRUE),
+  p90_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.92 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.88)], na.rm = TRUE),
   p90_diff = p90_bot - p90_top,
-  p95_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.935 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.965)], na.rm = TRUE),
-  p95_bot = mean(solute$time[which(- max(solute$sum_cv_top)*0.965 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.935)], na.rm = TRUE),
+  p95_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.93 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.97)], na.rm = TRUE),
+  p95_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.97 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.93)], na.rm = TRUE),
   p95_diff = p95_bot - p95_top,
-  p99_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.98 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*1)], na.rm = TRUE),
-  p99_bot = mean(solute$time[which(- max(solute$sum_cv_top)*1 >= solute$sum_cv_bot &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.98)], na.rm = TRUE),
+  p99_top =  mean(solute$time[which(max(solute$sum_cv_top)*0.981 <= solute$sum_cv_top &  solute$sum_cv_top <= max(solute$sum_cv_top)*0.999)], na.rm = TRUE),
+  p99_bot = mean(solute$time[which(solute$sum_cv_bot >= - max(solute$sum_cv_top)*0.999 &  solute$sum_cv_bot <= - max(solute$sum_cv_top)*0.981)], na.rm = TRUE),
   p99_diff = p99_bot - p99_top
   )
 }) %>% dplyr::bind_rows()
@@ -317,3 +323,29 @@ p1 <- sol_travel_tot %>%
   ggplot2::theme_bw()
 
 plotly::ggplotly(p1)
+
+
+solute_files_noirrig <- fs::dir_ls(paths$exe_dir,
+                                   regexp = "1a2a_no-irrig_tracer.*_vs/solute\\d\\d?.out",
+                                   recurse = TRUE)
+
+solute_files_irrig <- fs::dir_ls(paths$exe_dir,
+                                 regexp = "1a2a_tracer.*_vs/solute\\d\\d?.out",
+                                 recurse = TRUE)
+
+
+
+traveltimes_noirrig <- flextreat.hydrus1d::get_traveltimes(solute_files_noirrig)
+traveltimes_irrig <-  flextreat.hydrus1d::get_traveltimes(solute_files_irrig)
+
+
+htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_irrig,
+                                         title = "with irrigation (daily)",
+                                         ylim = c(0,650)),
+                        file = "traveltimes_irrig-daily.html")
+
+htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_noirrig,
+                                         title = "without irrigation",
+                                         ylim = c(0,650)),
+                        file = "traveltimes_noirrig.html")
+
