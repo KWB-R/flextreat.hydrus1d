@@ -363,22 +363,19 @@ p1 <- sol_travel_tot %>%
 plotly::ggplotly(p1)
 
 
-solute_files_noirrig <- fs::dir_ls(paths$exe_dir,
-                                   regexp = "1a2a_no-irrig_tracer.*_vs/solute\\d\\d?.out",
+traveltimes_list <- setNames(lapply(scenarios, function(scenario) {
+
+
+solute_files <- fs::dir_ls(paths$exe_dir,
+                                   regexp = sprintf("1a2a_%s_tracer.*_vs/solute\\d\\d?.out",
+                                                    scenario),
                                    recurse = TRUE)
 
-solute_files_irrig <- fs::dir_ls(paths$exe_dir,
-                                 regexp = "1a2a_tracer.*_vs/solute\\d\\d?.out",
-                                 recurse = TRUE)
-
-profile_files_2m <- fs::dir_ls(paths$exe_dir,
-                                 regexp = "1a2a_soil-2m_tracer.*/PROFILE.dat",
-                                 recurse = TRUE)
 
 
+flextreat.hydrus1d::get_traveltimes(solute_files)
+}), nm = names(scenarios))
 
-traveltimes_noirrig <- flextreat.hydrus1d::get_traveltimes(solute_files_noirrig)
-traveltimes_irrig <-  flextreat.hydrus1d::get_traveltimes(solute_files_irrig)
 
 
 htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_irrig,

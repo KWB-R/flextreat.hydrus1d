@@ -11,6 +11,9 @@ get_last_day_of_months(ids, date_start = "2017-05-01")
 
 \item{date_start}{(default: "2017-05-01")}
 }
+\value{
+last days of month
+}
 \description{
 Helper function: get last days of months
 }

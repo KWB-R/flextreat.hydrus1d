@@ -38,16 +38,16 @@ interpolate_time <- function(
 #'
 #' @param ids vector with ids
 #' @param date_start (default: "2017-05-01")
-#' @return
+#' @return last days of month
 #' @keywords internal
 #'
-#' @importFrom lubridate %m+%
+#' @importFrom lubridate %m+% days ceiling_date
 get_last_day_of_months <- function(ids,
                                    date_start = "2017-05-01") {
   sapply(ids, function(id) {
     start_date <- lubridate::ymd(date_start)
     month_date <- start_date %m+% months(id - 1)
-    last_day <- lubridate::ceiling_date(month_date, "month") - days(1)
+    last_day <- lubridate::ceiling_date(month_date, "month") - lubridate::days(1)
 
     return(last_day)
   }) %>% as.Date()
