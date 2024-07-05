@@ -1,6 +1,17 @@
 remotes::install_github("kwb-r/kwb.hydrus1d@dev")
 remotes::install_github("kwb-r/flextreat.hydrus1d@dev")
 
+#_no-irrig
+
+scenarios <- c("soil-1.5m", "soil-2m", "soil-1.5m_no-irrig", "soil-2m_no-irrig")
+
+periods <- tibble::tibble(start = c("01", "11", "21", "31"),
+                          end = c("10", "20", "30", "40"))
+
+sapply(scenarios, function(scenario) {
+
+sapply(seq_len(nrow(periods)), function(i) {
+
 paths_list <- list(
   #extdata = system.file("extdata", package = "flextreat.hydrus1d"),
   #root_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Vivian/Rohdaten/H1D",
@@ -8,7 +19,10 @@ paths_list <- list(
   #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
   #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
   exe_dir = "<root_local>",
-  model_name = "1a2a_no-irrig_tracer_3140", #"1a2a_BTA_korr_test_40d",
+  months_start = periods$start[i],
+  months_end = periods$end[i],
+  scenario = scenario,
+  model_name = "1a2a_<scenario>_tracer_<months_start><months_end>", #"1a2a_BTA_korr_test_40d",
   model_gui_path = "<exe_dir>/<model_name>.h1d",
   modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
   model_dir = "<exe_dir>/<model_name>",
@@ -29,19 +43,38 @@ paths_list <- list(
   soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
 )
 
-
 paths <- kwb.utils::resolve(paths_list)
-paths$solute
+
+no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
+
+# org <- fs::dir_ls(path =paths$exe_dir,
+#            regexp = "1a2a_soil-1.5m_.*\\.h1d$")
+#
+# new <- stringr::str_replace(org, "1.5m", "2m")
+
+#fs::file_copy(org, new)
+
+# org <- fs::dir_ls(path = paths$exe_dir,
+#                   regexp = "1a2a_soil-2m_.*/PROFILE.DAT",
+#                   recurse = TRUE)
+#
+# fs::file_copy(rep(file.path(paths$exe_dir, "1a2a/PROFILE.dat"),
+#                   length(org)),
+#               new_path = org,
+#               overwrite = TRUE)
 
 fs::dir_copy(paths$model_dir, paths$model_dir_vs, overwrite = TRUE)
 fs::file_copy(paths$model_gui_path, paths$modelvs_gui_path, overwrite = TRUE)
-
+#
+# profile <- kwb.hydrus1d::read_profile(paths$profile)
+#
+# View(profile)
 
 library(flextreat.hydrus1d)
 atm <- flextreat.hydrus1d::prepare_atmosphere_data()
 
 #no-irrigation
-atm[,c("groundwater.mmPerDay", "clearwater.mmPerDay")] <- 0
+if(no_irrig) atm[,c("groundwater.mmPerDay", "clearwater.mmPerDay")] <- 0
 
 atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
 # atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
@@ -60,7 +93,7 @@ days_monthy <- lubridate::days_in_month(seq.Date(from = min(atm$date),
 
 days_total <- cumsum(days_monthy)
 
-indeces <- 31:40
+indeces <- as.integer(paths$months_start):as.integer(paths$months_end)
 
 c_tops <- lapply(indeces, function(i) {
 
@@ -84,13 +117,19 @@ c_tops <- lapply(indeces, function(i) {
 
 
 
-
-atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
-                                       conc_irrig_clearwater = c_tops,
-                                       conc_irrig_groundwater = 0,
-                                       conc_rain = 0
-                                       )
-
+if(no_irrig) {
+  atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
+                                                     conc_irrig_clearwater = 0,
+                                                     conc_irrig_groundwater = 0,
+                                                     conc_rain = c_tops
+  )
+} else {
+  atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
+                                                     conc_irrig_clearwater = c_tops,
+                                                     conc_irrig_groundwater = 0,
+                                                     conc_rain = 0
+  )
+}
 
 writeLines(kwb.hydrus1d::write_atmosphere(atm = atm_prep),
            paths$atmosphere)
@@ -120,7 +159,8 @@ writeLines(kwb.hydrus1d::write_atmosphere(atm = atmos$data),
 
 kwb.hydrus1d::run_model(model_path = paths$model_dir_vs)
 
-
+})
+})
 
 solute <- kwb.hydrus1d::read_solute(paths$solute_vs) %>%
   dplyr::mutate(difftime = c(0,diff(time)))
@@ -183,8 +223,6 @@ condition <- solute$cv_top > 0
 sum(solute$cv_top[condition])
 condition <- solute$cv_top < 0
 sum(solute$cv_top[condition])
-
-
 
 solute_aggr_date <- flextreat.hydrus1d::aggregate_solute(solute)
 
@@ -331,6 +369,10 @@ solute_files_noirrig <- fs::dir_ls(paths$exe_dir,
 
 solute_files_irrig <- fs::dir_ls(paths$exe_dir,
                                  regexp = "1a2a_tracer.*_vs/solute\\d\\d?.out",
+                                 recurse = TRUE)
+
+profile_files_2m <- fs::dir_ls(paths$exe_dir,
+                                 regexp = "1a2a_soil-2m_tracer.*/PROFILE.dat",
                                  recurse = TRUE)
 
 
