@@ -154,7 +154,7 @@ prepare_atmosphere <- function(
     dplyr::bind_cols()
 
   if(n_conc[["conc_irrig_clearwater"]] == 1 & max(n_conc) > 1) {
-    load_irrig_cw <- copy_column(load_irrig_gw,
+    load_irrig_cw <- copy_column(load_irrig_cw,
                                  column = names(load_irrig_cw),
                                  number_of_new_columns = max(n_conc) - 1)
   }
