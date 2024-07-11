@@ -4,6 +4,24 @@ remotes::install_github("kwb-r/flextreat.hydrus1d@dev")
 #_no-irrig
 
 scenarios <- c("soil-1.5m", "soil-2m", "soil-1.5m_no-irrig", "soil-2m_no-irrig")
+scenarios <- c("soil-1m", "soil-3m", "soil-1m_no-irrig", "soil-3m_no-irrig")
+scenarios <- c("soil-1m_no-irrig", "soil-3m_no-irrig")
+scenarios <- c("soil-3m_no-irrig")
+
+scenarios <- c("soil-3m", "soil-3m_no-irrig")
+
+soil_depths <- c(1, 1.5, 2, 3)
+
+scenarios <- sapply(soil_depths, function(x) {
+  c(sprintf("soil-%sm", as.character(x)),
+    sprintf("soil-%sm_no-irrig", as.character(x)))}) %>% as.vector()
+
+# org <- fs::dir_ls(paths$exe_dir, regexp = "soil-[1|3]m", type = "directory")
+# new <- stringr::str_replace(org, pattern = "m_", replacement = "m_no-irrig_")
+# fs::dir_copy(org, new)
+# org_h1d <- file.path(paths$exe, "1a2a_soil-2m_tracer_0110.h1d")
+# new_h1d <- sprintf("%s.h1d", org)
+# sapply(new_h1d, function(x) fs::file_copy(org_h1d, x))
 
 periods <- tibble::tibble(start = c("01", "11", "21", "31"),
                           end = c("10", "20", "30", "40"))
@@ -31,7 +49,8 @@ paths_list <- list(
   atmosphere = "<model_dir>/ATMOSPH.IN",
   atmosphere_vs = "<model_dir_vs>/ATMOSPH.IN",
   a_level = "<model_dir>/A_LEVEL.out",
-  profile = "<model_dir>/PROFILE.dat",
+  hydrus1d = "<model_dir>/HYDRUS1D.DAT",
+  profile = "<model_dir>/PROFILE.DAT",
   obs_node = "<model_dir>/Obs_Node.out",
   balance = "<model_dir>/BALANCE.out",
   t_level = "<model_dir>/T_LEVEL.out",
@@ -45,6 +64,48 @@ paths_list <- list(
 
 paths <- kwb.utils::resolve(paths_list)
 
+#fs::file_copy(paths$profile, file.path(paths$model_dir, "PROFILE_org.DAT"))
+
+# soil_profile <- kwb.hydrus1d::read_profile(paths$profile)
+#
+# #soil_profile$profile <- soil_profile$profile[,1:15]
+#
+# solute_ids <- 6:10
+#
+# conc <- stats::setNames(lapply(solute_ids, function(x) rep(0, nrow(soil_profile$profile))),
+#                         nm = sprintf("conc%s", solute_ids)) %>%
+#   dplyr::bind_cols()
+#
+# profile <- dplyr::bind_cols(soil_profile$profile, conc)
+#
+# #profile_100 <- kwb.hydrus1d::extend_soil_profile(profile, x_end = -100)
+# profile_300 <- kwb.hydrus1d::extend_soil_profile(profile, x_end = -300)
+#
+# #
+# soil_profile_300 <- soil_profile
+# soil_profile_300$profile <- profile_300
+# #
+# #
+# kwb.hydrus1d::write_profile(soil_profile_300,
+#                             path = file.path(paths$model_dir, "PROFILE.DAT"))
+#
+#  soil_profile <- kwb.hydrus1d::read_profile(paths$profile)
+#
+#  atmos <- kwb.hydrus1d::read_atmosph(paths$atmosphere)
+#  sum(grepl("cTop", names(atmos$data)))
+#
+#  hydrus1d <- kwb.hydrus1d::read_hydrus1d(paths$hydrus1d)
+#  hydrus1d$Main$NumberOfSolutes <-  sum(grepl("cTop", names(atmos$data)))
+#  #sum(grepl("conc", names(soil_profile$profile)))
+#  hydrus1d$Profile$ProfileDepth <- - min(soil_profile$profile$x)
+#  hydrus1d$Profile$NumberOfNodes <- max(soil_profile$profile$node_id)
+#  hydrus1d$Profile$ObservationNodes <- soil_profile$obsnodes$n
+#
+#
+#  kwb.hydrus1d::write_hydrus1d(hydrus1d_list = hydrus1d,
+#                               path = paths$hydrus1d)
+
+
 no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
 
 # org <- fs::dir_ls(path =paths$exe_dir,
@@ -55,12 +116,21 @@ no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
 #fs::file_copy(org, new)
 
 # org <- fs::dir_ls(path = paths$exe_dir,
-#                   regexp = "1a2a_soil-2m_.*/PROFILE.DAT",
+#                   regexp = "1a2a_soil-3m_.*/PROFILE.DAT",
 #                   recurse = TRUE)
 #
-# fs::file_copy(rep(file.path(paths$exe_dir, "1a2a/PROFILE.dat"),
-#                   length(org)),
-#               new_path = org,
+# fs::file_copy(rep(file.path(paths$exe_dir, "1a2a_soil-3m_tracer_0110/PROFILE.dat"),
+#                   length(org)-1),
+#               new_path = org[-1],
+#               overwrite = TRUE)
+#
+# org <- fs::dir_ls(path = paths$exe_dir,
+#                   regexp = "1a2a_soil-3m_.*/HYDRUS1D.DAT",
+#                   recurse = TRUE)
+#
+# fs::file_copy(rep(file.path(paths$exe_dir, "1a2a_soil-3m_tracer_0110/HYDRUS1D.dat"),
+#                   length(org)-1),
+#               new_path = org[-1],
 #               overwrite = TRUE)
 
 fs::dir_copy(paths$model_dir, paths$model_dir_vs, overwrite = TRUE)
@@ -126,8 +196,8 @@ if(no_irrig) {
 } else {
   atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
                                                      conc_irrig_clearwater = c_tops,
-                                                     conc_irrig_groundwater = 0,
-                                                     conc_rain = 0
+                                                     conc_irrig_groundwater = c_tops,
+                                                     conc_rain = c_tops
   )
 }
 
@@ -365,6 +435,7 @@ plotly::ggplotly(p1)
 
 traveltimes_list <- setNames(lapply(scenarios, function(scenario) {
 
+try({
 
 solute_files <- fs::dir_ls(paths$exe_dir,
                                    regexp = sprintf("1a2a_%s_tracer.*_vs/solute\\d\\d?.out",
@@ -373,18 +444,73 @@ solute_files <- fs::dir_ls(paths$exe_dir,
 
 
 
-flextreat.hydrus1d::get_traveltimes(solute_files)
-}), nm = names(scenarios))
+flextreat.hydrus1d::get_traveltimes(solute_files, dbg = TRUE)
+})}), nm = (scenarios))
+
+
+sapply(seq_along(traveltimes_list), function(i) {
+
+  htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_list[[i]],
+                                                               title = sprintf("%s", names(traveltimes_list)[i]),
+                                                               ylim = c(0,650)),
+                          file = sprintf("traveltimes_%s.html", names(traveltimes_list)[i]))
+})
+
+
+traveltime_bp <- lapply(traveltimes_list, function(x) {
+  x %>%
+  dplyr::filter(percentiles == 0.5)
+}) %>% dplyr::bind_rows(.id = "scenario") %>%
+  dplyr::filter(!stringr::str_detect(scenario, "1.5"))
+
+
+scenario_by_mean_traveltime <- traveltime_bp %>%
+  dplyr::group_by(scenario) %>%
+  dplyr::summarise(mean = mean(time_diff, na.rm = TRUE)) %>%
+  dplyr::arrange(mean)
+
+
+scenario_by_mean_traveltime$scenario
+
+
+y_lim <- c(0,350)
+
+tt_bp_total <- traveltime_bp %>%
+  ggplot2::ggplot(ggplot2::aes(x = scenario, y = time_diff)) +
+  ggplot2::geom_boxplot(outliers = FALSE) +
+  ggplot2::geom_jitter(position = ggplot2::position_jitter(width = 0.1),
+                       col = "darkgrey",
+                       alpha = 0.6) +
+  ggplot2::ylim(y_lim) +
+  ggplot2::labs(y = "Median Traveltime (days)", x = "Scenario",
+                title = "Boxplot: median traveltime total") +
+  ggplot2::theme_bw()
 
 
 
-htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_irrig,
-                                         title = "with irrigation (daily)",
-                                         ylim = c(0,650)),
-                        file = "traveltimes_irrig-daily.html")
+tt_bp_quarter <- traveltime_bp %>%
+  dplyr::mutate(quarter = lubridate::quarter(traveltime_bp$date) %>% as.factor()) %>%
+ggplot2::ggplot(ggplot2::aes(x = scenario, y = time_diff, col = quarter)) +
+  ggplot2::geom_boxplot() +
+  ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
+    jitter.width = 0.1,
+    dodge.width = 0.75),
+    alpha = 0.6) +
+  ggplot2::labs(y = "Median Traveltime (days)",
+                x = "Scenario",
+                col = "Quartal",
+                title = "Boxplot: median traveltime by quarter") +
+  ggplot2::ylim(y_lim) +
+  ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "top")
 
-htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_noirrig,
-                                         title = "without irrigation",
-                                         ylim = c(0,650)),
-                        file = "traveltimes_noirrig.html")
 
+
+htmlwidgets::saveWidget(widget = plotly::ggplotly(tt_bp_total),
+                        title = "Boxplot: median traveltime total",
+                        file = "boxplot_traveltimes-median_total.html")
+
+
+htmlwidgets::saveWidget(plotly::ggplotly(tt_bp_quarter),
+                        title = "Boxplot: median traveltime by quarter",
+                        file = "boxplot_traveltimes-median_quarter.html")

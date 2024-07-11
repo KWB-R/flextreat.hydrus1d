@@ -59,6 +59,7 @@ get_last_day_of_months <- function(ids,
 #' @param solute_files paths to solute files, with good naming convention for
 #' monthly solute exposition (e.g. 0110, solute1: first month, solute10: tenth
 #' month after simulation start)
+#' @param print debug messages (default: TRUE)
 #' @return tibble with time of substance at top/bottom and diff time. Note that
 #' the percentile relate to the substance load
 #' @export
@@ -66,12 +67,17 @@ get_last_day_of_months <- function(ids,
 #' @importFrom stringr str_remove_all
 #' @importFrom dplyr left_join row_number
 #'
-get_traveltimes <- function(solute_files) {
+get_traveltimes <- function(solute_files, dbg = TRUE) {
+
+
 
 solute_travel_list <- setNames(lapply(solute_files, function(path) {
+  kwb.utils::catAndRun(messageText = sprintf("Reading '%s'",  path),
+                       expr = {
     solute <- kwb.hydrus1d::read_solute(path)
     interpolate_time(solute)
-    }), nm = solute_files)
+    },
+    dbg = dbg)}), nm = solute_files)
 
 
 solute_travel <- dplyr::bind_rows(solute_travel_list, .id = "solute_path") %>%

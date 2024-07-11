@@ -4,12 +4,14 @@
 \alias{get_traveltimes}
 \title{Get traveltimes (for conservative tracers)}
 \usage{
-get_traveltimes(solute_files)
+get_traveltimes(solute_files, dbg = TRUE)
 }
 \arguments{
 \item{solute_files}{paths to solute files, with good naming convention for
 monthly solute exposition (e.g. 0110, solute1: first month, solute10: tenth
 month after simulation start)}
+
+\item{print}{debug messages (default: TRUE)}
 }
 \value{
 tibble with time of substance at top/bottom and diff time. Note that
