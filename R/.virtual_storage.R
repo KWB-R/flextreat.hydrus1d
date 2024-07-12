@@ -10,11 +10,27 @@ scenarios <- c("soil-3m_no-irrig")
 
 scenarios <- c("soil-3m", "soil-3m_no-irrig")
 
+scenarios <- sprintf("soil-2m_irrig-%02ddays", seq(10,30,10))
+
+scenarios <- sprintf("soil-2m_irrig-%02ddays", 5)
+
+
 soil_depths <- c(1, 1.5, 2, 3)
 
 scenarios <- sapply(soil_depths, function(x) {
-  c(sprintf("soil-%sm", as.character(x)),
+  c(sprintf("soil-%sm_irrig-01days", as.character(x)),
     sprintf("soil-%sm_no-irrig", as.character(x)))}) %>% as.vector()
+
+soil_depths <- c(1, 1.5, 2, 3)
+irrigation_intervals <- c(1, 5, 10, 20, 30)
+
+scenarios <- sapply(soil_depths, function(x) {
+  sapply(irrigation_intervals, function(y) {
+  c(sprintf("soil-%sm_irrig-%02ddays", as.character(x), y),
+    sprintf("soil-%sm_no-irrig", as.character(x)))
+})
+}) %>% as.vector()
+
 
 # org <- fs::dir_ls(paths$exe_dir, regexp = "soil-[1|3]m", type = "directory")
 # new <- stringr::str_replace(org, pattern = "m_", replacement = "m_no-irrig_")
@@ -107,6 +123,36 @@ paths <- kwb.utils::resolve(paths_list)
 
 
 no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
+irrig_pattern <- "irrig-[0-9][0-9]?days"
+irrig_int <- stringr::str_detect(paths$model_dir, irrig_pattern)
+
+if(irrig_int) {
+
+string_irrig <- stringr::str_extract(paths$model_dir, sprintf("_%s", irrig_pattern))
+
+if(!fs::dir_exists(paths$model_dir)) {
+
+model_to_copy <- stringr::str_replace(paths$model_dir, string_irrig, "_irrig-01days")
+
+fs::dir_copy(model_to_copy, paths$model_dir)
+}
+
+if(!fs::file_exists(paths$model_gui_path)) {
+  modelgui_to_copy <- stringr::str_replace(paths$model_gui_path, string_irrig, "_irrig-01days")
+  fs::file_copy(modelgui_to_copy, paths$model_gui_path)
+
+}
+
+string_irrig_int <- stringr::str_extract(paths$model_dir, "[0-9][0-9]?days")
+
+irrig_interval <- sprintf("%s %s",
+        string_irrig_int %>%
+          stringr::str_extract("\\d+") %>%
+          as.integer(),
+        string_irrig_int %>%
+          stringr::str_extract("[a-z]+"))
+}
+
 
 # org <- fs::dir_ls(path =paths$exe_dir,
 #            regexp = "1a2a_soil-1.5m_.*\\.h1d$")
@@ -146,7 +192,38 @@ atm <- flextreat.hydrus1d::prepare_atmosphere_data()
 #no-irrigation
 if(no_irrig) atm[,c("groundwater.mmPerDay", "clearwater.mmPerDay")] <- 0
 
+
+sum_per_interval <- function(data, interval) {
+
+  data_org <- data
+
+  data <- data %>%
+    dplyr::select(tidyselect::all_of(c("date",
+                                       "groundwater.mmPerDay",
+                                       "clearwater.mmPerDay")))
+
+  cols_sum <- names(data)[names(data) != "date"]
+
+  data_summed <- data %>%
+    dplyr::mutate(group = lubridate::floor_date(date, unit = interval)) %>%  # Konvertiere date in datetime-Format
+    dplyr::group_by(group) %>%  # Gruppiere nach Zeitintervallen
+    dplyr::summarise_at(.vars = tidyselect::all_of(cols_sum),
+                        .funs = sum) %>%   # Berechne die Summe für jedes Intervall
+    dplyr::rename(date = group)
+
+  data_org[, cols_sum] <- 0
+  data_org[data_org$date %in% data_summed$date, cols_sum] <- data_summed[,cols_sum]
+  data_org
+}
+
 atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
+
+if(irrig_int) {
+atm_selected <- sum_per_interval(data = atm_selected,
+                                        interval = irrig_interval)
+
+}
+
 # atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
 #                                        conc_irrig_clearwater = c(6.738,
 #                                                                  0.875,
@@ -461,22 +538,28 @@ traveltime_bp <- lapply(traveltimes_list, function(x) {
   x %>%
   dplyr::filter(percentiles == 0.5)
 }) %>% dplyr::bind_rows(.id = "scenario") %>%
-  dplyr::filter(!stringr::str_detect(scenario, "1.5"))
+  dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
+  dplyr::mutate(quarter = lubridate::quarter(traveltime_bp$date) %>% as.factor(),
+                soil_depth =  stringr::str_extract(scenario, "soil-.*m") %>%
+                  stringr::str_remove_all("soil-|m") %>%  as.factor())
 
 
-scenario_by_mean_traveltime <- traveltime_bp %>%
+scenario_by_median_traveltime <- traveltime_bp %>%
   dplyr::group_by(scenario) %>%
-  dplyr::summarise(mean = mean(time_diff, na.rm = TRUE)) %>%
-  dplyr::arrange(mean)
+  dplyr::summarise(median = median(time_diff, na.rm = TRUE)) %>%
+  dplyr::arrange(median)
 
+traveltime_bp <- traveltime_bp %>%
+  dplyr::left_join(scenario_by_median_traveltime)
 
 scenario_by_mean_traveltime$scenario
 
 
 y_lim <- c(0,350)
 
+
 tt_bp_total <- traveltime_bp %>%
-  ggplot2::ggplot(ggplot2::aes(x = scenario, y = time_diff)) +
+  ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario, median), y = time_diff)) +
   ggplot2::geom_boxplot(outliers = FALSE) +
   ggplot2::geom_jitter(position = ggplot2::position_jitter(width = 0.1),
                        col = "darkgrey",
@@ -486,12 +569,45 @@ tt_bp_total <- traveltime_bp %>%
                 title = "Boxplot: median traveltime total") +
   ggplot2::theme_bw()
 
+tt_bp_total
+
+
+tt_bp_total_soil <- traveltime_bp %>%
+  ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario, median), y = time_diff, col = soil_depth)) +
+  ggplot2::geom_boxplot(outliers = FALSE) +
+  ggplot2::geom_jitter(position = ggplot2::position_jitter(width = 0.1),
+                       alpha = 0.6) +
+  ggplot2::ylim(y_lim) +
+  ggplot2::labs(y = "Median Traveltime (days)", x = "Scenario",
+                col = "Soil Depth (m)",
+                title = "Boxplot: median traveltime total") +
+  ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "top")
+
+tt_bp_total_soil
+
+
+
+tt_bp_total_quartal <- traveltime_bp %>%
+  ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario, median), y = time_diff)) +
+  ggplot2::geom_boxplot(outliers = FALSE) +
+  ggplot2::geom_jitter(position = ggplot2::position_jitter(width = 0.1),
+                       mapping = ggplot2::aes(col = quarter),
+                       alpha = 0.6) +
+  ggplot2::ylim(y_lim) +
+  ggplot2::labs(y = "Median Traveltime (days)", x = "Scenario",
+                col = "Quartal",
+                title = "Boxplot: median traveltime total") +
+  ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "top")
+
+tt_bp_total_quartal
+
 
 
 tt_bp_quarter <- traveltime_bp %>%
-  dplyr::mutate(quarter = lubridate::quarter(traveltime_bp$date) %>% as.factor()) %>%
-ggplot2::ggplot(ggplot2::aes(x = scenario, y = time_diff, col = quarter)) +
-  ggplot2::geom_boxplot() +
+  ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario, median), y = time_diff, col = quarter)) +
+  ggplot2::geom_boxplot(outliers = FALSE) +
   ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
     jitter.width = 0.1,
     dodge.width = 0.75),
@@ -504,7 +620,7 @@ ggplot2::ggplot(ggplot2::aes(x = scenario, y = time_diff, col = quarter)) +
   ggplot2::theme_bw() +
   ggplot2::theme(legend.position = "top")
 
-
+tt_bp_quarter
 
 htmlwidgets::saveWidget(widget = plotly::ggplotly(tt_bp_total),
                         title = "Boxplot: median traveltime total",
