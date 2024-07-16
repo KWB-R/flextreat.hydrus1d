@@ -66,6 +66,7 @@ paths_list <- list(
   atmosphere_vs = "<model_dir_vs>/ATMOSPH.IN",
   a_level = "<model_dir>/A_LEVEL.out",
   hydrus1d = "<model_dir>/HYDRUS1D.DAT",
+  selector = "<model_dir>/SELECTOR.IN",
   profile = "<model_dir>/PROFILE.DAT",
   obs_node = "<model_dir>/Obs_Node.out",
   balance = "<model_dir>/BALANCE.out",
