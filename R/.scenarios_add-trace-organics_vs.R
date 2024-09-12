@@ -28,7 +28,7 @@ prepare_solute_input <- function(dat, selector, diff_w = 0, diff_g = 0) {
     reaction$Beta <- 1
     reaction$Ks <- round(ks, 2)
     reaction$SnkL1 <- round(halftime_to_firstorderrate(dat_sel$half_life_days),
-                            2)
+                            5)
 
     list(diffusion = tibble::tibble(DifW = diff_w, DifG = diff_g),
          reaction = reaction)
@@ -61,13 +61,14 @@ kd <- function(porosity, retardation, bulk_density) {
 halftime_to_firstorderrate <- function(half_time) {
 
   #https://chem.libretexts.org/Courses/Bellarmine_University/BU%3A_Chem_104_(Christianson)/Phase_2%3A_Understanding_Chemical_Reactions/4%3A_Kinetics%3A_How_Fast_Reactions_Go/4.5%3A_First_Order_Reaction_Half-Life#mjx-eqn-21.4.2
-  half_time / 0.693
+  0.693 / half_time
 }
 
 
-path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_2_Boden-Grundwasser/daten_karten/Sickerwasserprognose/column-studies/Stoffeigenschaften_Säulen.xlsx"
+#path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_2_Boden-Grundwasser/daten_karten/Sickerwasserprognose/column-studies/Stoffeigenschaften_Säulen.xlsx"
+path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/StofflicheModellrandbedingungen.xlsx"
 
-soil_columns <- kwb.db::hsGetTable(path, "my_results", stringsAsFactors = FALSE) %>%
+soil_columns <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
   janitor::clean_names() %>%
   dplyr::mutate(half_life_days = dplyr::case_when(
     grepl(">", hwz_tage) ~ hwz_tage %>% stringr::str_remove(">") %>% as.numeric() %>% round(digits = 2),
@@ -77,42 +78,50 @@ soil_columns <- kwb.db::hsGetTable(path, "my_results", stringsAsFactors = FALSE)
     retard = dplyr::case_when(
       grepl("-", retardation) ~ get_mean(retardation),
       is.na(retardation) ~ 1L,
-      .default = as.numeric(retardation) %>% round(digits = 2)))
+      .default = as.numeric(retardation) %>% round(digits = 2))) %>%
+  dplyr::filter(!is.na(half_life_days)) %>%
+  dplyr::mutate(id = 1:dplyr::n()) %>%
+  dplyr::relocate(id) %>%
+  dplyr::mutate(retard = 1,
+                half_life_days = 0)
 
 
-scenarios <- "soil-2m_irrig-01days"
 
+scenarios <- sapply(c(1,10), function(x) paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))) %>%
+  as.vector()
+#scenarios <- scenarios[c(1,3)]
 seq_start <- seq(1,nrow(soil_columns),10)
 seq_end <- seq(10,nrow(soil_columns),10)
 if(length(seq_end) < length(seq_start)) seq_end <- c(seq_end, nrow(soil_columns))
 
 solute_ids <- tibble::tibble(start = seq_start,
                               end = seq_end)
+treatments <- c("ka", "o3") #"ka" #c("ka", "o3") #"ka"
 
-
+sapply(treatments, function(treatment) {
 sapply(scenarios, function(scenario) {
 
 sapply(seq_len(nrow(solute_ids)), function(i) {
 
   paths_list <- list(
     #extdata = system.file("extdata", package = "flextreat.hydrus1d"),
-    #root_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Vivian/Rohdaten/H1D",
-    root_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/H1D",
+    #root_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no",
+    root_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/conservative-transport",
     #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
     #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
     exe_dir = "<root_local>",
     solute_id_start = sprintf("%02d", solute_ids$start[i]),
     solute_id_end = sprintf("%02d", solute_ids$end[i]),
     scenario = scenario,
+    location = sprintf("ablauf_%s_median", treatment), #"ablauf_ka_median",
     model_name_org = "1a2a_<scenario>_tracer_0110",
-    model_name = "1a2a_<scenario>_soil-column_<solute_id_start><solute_id_end>", #"1a2a_BTA_korr_test_40d",
+    model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>", #"1a2a_BTA_korr_test_40d",
     model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
     model_gui_path = "<exe_dir>/<model_name>.h1d",
     modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
     model_dir_org = "<exe_dir>/<model_name_org>",
     model_dir = "<exe_dir>/<model_name>",
     model_dir_vs = "<exe_dir>/<model_name>_vs",
-    scenario = "xxx",
     atmosphere = "<model_dir>/ATMOSPH.IN",
     atmosphere_vs = "<model_dir_vs>/ATMOSPH.IN",
     a_level = "<model_dir>/A_LEVEL.out",
@@ -151,6 +160,12 @@ if(!fs::file_exists(paths$model_gui_path)) {
 
 }
 
+model_out_files <- list.files(paths$model_dir, pattern = "\\.out$", full.names = TRUE)
+
+if(length(model_out_files) > 0) {
+fs::file_delete(model_out_files)
+}
+
 string_irrig_int <- stringr::str_extract(paths$model_dir, "[0-9][0-9]?days")
 
 irrig_interval <- sprintf("%s %s",
@@ -174,6 +189,7 @@ solutes_new <- prepare_solute_input(dat = soil_columns[solute_start_id:solute_en
                                     selector = selector,
                                     diff_w = 0,
                                     diff_g = 0)
+
 
 kwb.hydrus1d::write_selector(solutes_new, paths$selector)
 
@@ -216,8 +232,7 @@ atm_selected <- sum_per_interval(data = atm_selected,
 }
 
 atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
-                                       conc_irrig_clearwater = rep(100,
-                                                                   n_solutes),
+                                       conc_irrig_clearwater = soil_columns[solute_start_id:solute_end_id, paths$location],
                                        conc_irrig_groundwater = 0,
                                        conc_rain = 0
                                        )
@@ -298,6 +313,13 @@ atmos$data[names(vs_atm$df)] <- vs_atm$df
 fs::dir_copy(paths$model_dir, paths$model_dir_vs, overwrite = TRUE)
 fs::file_copy(paths$model_gui_path, paths$modelvs_gui_path, overwrite = TRUE)
 
+model_vs_out_files <- list.files(paths$model_dir_vs, pattern = "\\.out$", full.names = TRUE)
+
+if(length(model_vs_out_files) > 0) {
+  fs::file_delete(model_vs_out_files)
+}
+
+
 writeLines(kwb.hydrus1d::write_atmosphere(atm = atmos$data),
            paths$atmosphere_vs)
 
@@ -306,9 +328,14 @@ kwb.hydrus1d::run_model(model_path = paths$model_dir_vs)
 
 })
 })
+})
+
+
 
 solute <- kwb.hydrus1d::read_solute(paths$solute_vs) %>%
   dplyr::mutate(difftime = c(0,diff(time)))
+
+max(solute$sum_cv_top) + min(solute$sum_cv_bot) + min(solute$cv_ch1)
 
 plot(solute$time, solute$c_top)
 points(solute$c_bot, col = "red")
@@ -421,13 +448,19 @@ solute$time[min(which(solute$sum_cv_top == max(solute$sum_cv_top)))]
 
 paths$model_dir_vs
 
-solute_files <- fs::dir_ls(paths$exe_dir,
-                           regexp = "soil-column.*_vs/solute\\d\\d?.out",
+#scenarios_solutes <- paste0(scenarios, "_soil-column")
+scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
+
+solutes_list <- setNames(lapply(scenarios_solutes, function(scenario) {
+  solute_files <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/conservative-transport/",
+                           regexp = sprintf(".*%s.*_vs/solute\\d\\d?.out",
+                                            scenario),
                            recurse = TRUE)
 
-solutes <- setNames(lapply(solute_files, function(file) {
+stopifnot(length(solute_files) > 0)
 
-kwb.hydrus1d::read_solute(file)
+solutes <- setNames(lapply(solute_files, function(file) {
+kwb.hydrus1d::read_solute(file, dbg = TRUE)
 }), nm = solute_files) %>% dplyr::bind_rows(.id = "path")
 
 
@@ -436,8 +469,28 @@ solute_files_df <- tibble::tibble(path = solute_files,
                                   soilcolumn_id_start = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(1,2) %>% as.integer(),
                                   soilcolumn_id_end = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(3,4) %>% as.integer(),
                                   soil_column_id = soilcolumn_id_start + model_solute_id - 1) %>%
-  dplyr::left_join(soil_columns, by = c(soil_column_id = "nr"))
+  dplyr::left_join(soil_columns, by = c(soil_column_id = "id"))
 
 
-v<- dplyr::left_join(solutes, solute_files_df)
+dplyr::left_join(solutes, solute_files_df)
+}), nm = scenarios_solutes)
 
+
+basename(dirname(solutes_list$ablauf_o3_median$path))
+
+solutes_df <- solutes_list %>%
+  dplyr::bind_rows(.id = "scenario") %>%
+  dplyr::mutate(scen = stringr::str_remove(basename(dirname(path)), "_soil-column.*")) %>%
+  dplyr::group_by(path, scen,substanz_nr, substanz_name) %>%
+  dplyr::summarise(sum_cv_top = max(sum_cv_top),
+                   sum_cv_bot = min(sum_cv_bot),
+                   cv_ch1 = min(cv_ch1)) %>%
+  dplyr::mutate(mass_balance_error_percent = 100*(sum_cv_top + cv_ch1 + sum_cv_bot)/sum_cv_top) %>%
+  dplyr::arrange(mass_balance_error_percent)
+
+exp_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/conservative-transport/"
+saveRDS(solutes_list, file = file.path(exp_dir, "solutes-list_conservative-transport.rds"))
+
+openxlsx::write.xlsx(solutes_df, file = file.path(exp_dir, "hydrus_scenarios_conservative-transport.xlsx"))
+
+View(solutes_list$`soil-1m_irrig-01days_soil-column`)
