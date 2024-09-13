@@ -17,12 +17,12 @@ url_bs_rain <- rdwd::selectDWD(name = "Braunschweig",
 
 bs_rain <- rdwd::dataDWD(url_bs_rain)
 
-precipitation_hourly <- rdwd::dataDWD(url_bs_rain) %>%
-  dplyr::select(.data$MESS_DATUM, .data$R1) %>%
+precipitation_hourly <- bs_rain %>%
+  dplyr::select(MESS_DATUM, R1) %>%
   dplyr::rename("datetime" = "MESS_DATUM",
                 "precipitation_mm" = "R1")
 
-usethis::use_data(precipitation_hourly)
+usethis::use_data(precipitation_hourly, overwrite = TRUE)
 
 
 precipitation_daily <- precipitation_hourly %>%
@@ -30,19 +30,28 @@ precipitation_daily <- precipitation_hourly %>%
   dplyr::group_by(date) %>%
   dplyr::summarise(rain_mm = sum(precipitation_mm))
 
-usethis::use_data(precipitation_daily)
+usethis::use_data(precipitation_daily, overwrite = TRUE)
 
 
 ## DWD datasets
-remotes::install_github("kwb-r/kwb.dwd")
+remotes::install_github("kwb-r/kwb.dwd@get-rid-of-rgdal")
 
 
 shape_file <- system.file("extdata/input-data/gis/Abwasserverregnungsgebiet.shp",
                           package = "flextreat.hydrus1d")
 
 
-yearmonth_start <- "201611"
-yearmonth_end <- "202204"
+# Only data of full months can currently be read!
+evapo_p <- kwb.dwd::read_daily_data_over_shape(
+  file = shape_file,
+  variable = "evapo_p",
+  from = "201705",
+  to = "202312"
+)
+usethis::use_data(evapo_p, overwrite = TRUE)
+
+yearmonth_start <- "201705"
+yearmonth_end <- "202312"
 
 kwb.dwd:::list_daily_grids_germany_tgz("x")
 
@@ -64,7 +73,6 @@ dwd_daily_list <- stats::setNames(lapply(dwd_daily_vars, function(dwd_var) {
 
 
 dwd_daily <- dplyr::bind_rows(dwd_daily_list, .id = "parameter")
-"soil moisture" =
 
 
 kwb.dwd:::list_monthly_grids_germany_asc_gz("x")

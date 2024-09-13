@@ -60,8 +60,12 @@ kd <- function(porosity, retardation, bulk_density) {
 
 halftime_to_firstorderrate <- function(half_time) {
 
+  if(half_time != 0) {
   #https://chem.libretexts.org/Courses/Bellarmine_University/BU%3A_Chem_104_(Christianson)/Phase_2%3A_Understanding_Chemical_Reactions/4%3A_Kinetics%3A_How_Fast_Reactions_Go/4.5%3A_First_Order_Reaction_Half-Life#mjx-eqn-21.4.2
   0.693 / half_time
+  } else {
+    0
+  }
 }
 
 
@@ -82,8 +86,9 @@ soil_columns <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE
   dplyr::filter(!is.na(half_life_days)) %>%
   dplyr::mutate(id = 1:dplyr::n()) %>%
   dplyr::relocate(id) %>%
-  dplyr::mutate(retard = 1,
-                half_life_days = 0)
+  dplyr::mutate(retard = 1#,
+                #half_life_days = 0
+                )
 
 
 
@@ -97,7 +102,7 @@ if(length(seq_end) < length(seq_start)) seq_end <- c(seq_end, nrow(soil_columns)
 solute_ids <- tibble::tibble(start = seq_start,
                               end = seq_end)
 treatments <- c("ka", "o3") #"ka" #c("ka", "o3") #"ka"
-
+#treatments <- c("ka")
 sapply(treatments, function(treatment) {
 sapply(scenarios, function(scenario) {
 
@@ -106,7 +111,7 @@ sapply(seq_len(nrow(solute_ids)), function(i) {
   paths_list <- list(
     #extdata = system.file("extdata", package = "flextreat.hydrus1d"),
     #root_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no",
-    root_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/conservative-transport",
+    root_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no",
     #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
     #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
     exe_dir = "<root_local>",
@@ -452,7 +457,7 @@ paths$model_dir_vs
 scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
 
 solutes_list <- setNames(lapply(scenarios_solutes, function(scenario) {
-  solute_files <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/conservative-transport/",
+  solute_files <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no/",
                            regexp = sprintf(".*%s.*_vs/solute\\d\\d?.out",
                                             scenario),
                            recurse = TRUE)
@@ -485,12 +490,13 @@ solutes_df <- solutes_list %>%
   dplyr::summarise(sum_cv_top = max(sum_cv_top),
                    sum_cv_bot = min(sum_cv_bot),
                    cv_ch1 = min(cv_ch1)) %>%
-  dplyr::mutate(mass_balance_error_percent = 100*(sum_cv_top + cv_ch1 + sum_cv_bot)/sum_cv_top) %>%
+  dplyr::mutate(mass_balance_error_percent = 100*(sum_cv_top + cv_ch1 + sum_cv_bot)/sum_cv_top,
+                soil = sum_cv_top - (cv_ch1 + sum_cv_bot)) %>%
   dplyr::arrange(mass_balance_error_percent)
 
-exp_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/conservative-transport/"
-saveRDS(solutes_list, file = file.path(exp_dir, "solutes-list_conservative-transport.rds"))
+exp_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no/"
+saveRDS(solutes_list, file = file.path(exp_dir, "solutes-list_retardation_no.rds"))
 
-openxlsx::write.xlsx(solutes_df, file = file.path(exp_dir, "hydrus_scenarios_conservative-transport.xlsx"))
+openxlsx::write.xlsx(solutes_df, file = file.path(exp_dir, "hydrus_scenarios_retardation-no.xlsx"))
 
 View(solutes_list$`soil-1m_irrig-01days_soil-column`)
