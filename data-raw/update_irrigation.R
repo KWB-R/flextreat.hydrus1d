@@ -35,12 +35,8 @@ irrig_new <- dplyr::bind_rows(irrig_old, irrig_update_tmp) %>%
 
 readr::write_csv2(irrig_new, "inst/extdata/input-data/Beregnungsmengen_AVB.csv")
 
-irrig_old %>%
-  dplyr::rename(year = Jahr,
-                month = Monat_num,
-                days_in_month =
-                )
-
+#'## 2700ha (https://www.abwasserverband-bs.de/de/was-wir-machen/verregnung/)
+irrigation_area_sqm <- 27000000
 
 irrigation <- irrig_old %>%
   dplyr::rename(irrigation_m3 = .data$Menge_m3,
@@ -72,5 +68,5 @@ irrigation <- irrig_old %>%
   tidyr::pivot_wider(names_from = .data$source,
                      values_from = .data$irrigation_mmPerDay)
 
-usethis::use_data(irrigation)
+usethis::use_data(irrigation, overwrite = TRUE)
 
