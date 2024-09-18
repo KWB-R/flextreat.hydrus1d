@@ -2,6 +2,59 @@ remotes::install_github("kwb-r/kwb.hydrus1d@dev")
 remotes::install_github("kwb-r/flextreat.hydrus1d@dev")
 library(magrittr)
 
+get_atm <- function(atm, extreme_rain = NULL) {
+
+  if(is.null(extreme_rain)) {
+    return(atm)
+  } else if (extreme_rain %in% c("dry", "wet")) {
+    atm <- atm %>%
+      dplyr::mutate(hydrologic_year = flextreat.hydrus1d::get_hydrologic_years(date),
+                    year = as.integer(format(date, format = "%Y")),
+                    day_of_year = lubridate::yday(date))
+
+    atm_stats <- atm %>%
+      dplyr::group_by(year) %>%
+      dplyr::summarise(rain_mm = sum(rain_mm, na.rm = TRUE),
+                       evapo_p_mean_mm = sum(evapo_p_mean_mm, na.rm = TRUE))
+
+    if(extreme_rain == "dry") {
+      atm_dry <- atm_stats %>%
+        dplyr::filter(rain_mm == min(rain_mm))
+
+      atm_dry_sel <- atm %>%
+        dplyr::filter(year == atm_dry$year) %>%
+        dplyr::select(day_of_year, rain_mm)
+
+      atm_dry_input <- atm %>%
+        dplyr::select(- rain_mm, - hydrologic_year, - year) %>%
+        dplyr::left_join(atm_dry_sel) %>%
+        dplyr::mutate(rain_mm = dplyr::if_else(is.na(rain_mm), 0, rain_mm)) %>%
+        dplyr::select(- day_of_year) %>%
+        dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
+
+      return(atm_dry_input)
+    } else if (extreme_rain == "wet") {
+      atm_wet <- atm_stats %>%
+        dplyr::filter(rain_mm == max(rain_mm))
+
+
+      atm_wet_sel <- atm %>%
+        dplyr::filter(year == atm_wet$year) %>%
+        dplyr::select(day_of_year, rain_mm)
+
+      atm_wet_input <- atm %>%
+        dplyr::select(- rain_mm, - hydrologic_year, - year) %>%
+        dplyr::left_join(atm_wet_sel) %>%
+        dplyr::mutate(rain_mm = dplyr::if_else(is.na(rain_mm), 0, rain_mm)) %>%
+        dplyr::select(- day_of_year) %>%
+        dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
+      return(atm_wet_input)
+    } else {
+      stop("extreme_rain has to be either 'NULL', 'dry' or 'wet")
+    }
+  }}
+
+
 prepare_solute_input <- function(dat, selector, diff_w = 0, diff_g = 0) {
 
   stopifnot(nrow(dat) <= 10)
@@ -91,6 +144,21 @@ soil_columns <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE
                 )
 
 
+short <- FALSE
+
+duration_string <- if (short == FALSE) {
+  "long"
+} else {
+  "short"
+}
+
+extreme_rain <- NULL # "wet", "dry"
+
+extreme_rain_string <- if(any(c("dry", "wet") %in% extreme_rain)) {
+  sprintf("_%s", extreme_rain)
+} else {
+  ""
+}
 
 scenarios <- sapply(c(1,10), function(x) paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))) %>%
   as.vector()
@@ -111,7 +179,7 @@ sapply(seq_len(nrow(solute_ids)), function(i) {
   paths_list <- list(
     #extdata = system.file("extdata", package = "flextreat.hydrus1d"),
     #root_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no",
-    root_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no",
+    root_local = sprintf("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/%s/retardation_no", sprintf("%s%s", duration_string, extreme_rain_string)),
     #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
     #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
     exe_dir = "<root_local>",
@@ -145,6 +213,10 @@ sapply(seq_len(nrow(solute_ids)), function(i) {
   )
 
   paths <- kwb.utils::resolve(paths_list)
+
+  solute_start_id <- as.numeric(paths$solute_id_start)
+  solute_end_id <- as.numeric(paths$solute_id_end)
+  n_solutes <- solute_end_id - (solute_start_id - 1)
 
 
 no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
@@ -184,22 +256,16 @@ irrig_interval <- sprintf("%s %s",
 
 library(flextreat.hydrus1d)
 
-solute_start_id <- as.numeric(paths$solute_id_start)
-solute_end_id <- as.numeric(paths$solute_id_end)
-n_solutes <- solute_end_id - (solute_start_id - 1)
+atm <- get_atm(atm = flextreat.hydrus1d::prepare_atmosphere_data(),
+               extreme_rain = extreme_rain)
 
-selector <- kwb.hydrus1d::read_selector(path = paths$selector)
-
-solutes_new <- prepare_solute_input(dat = soil_columns[solute_start_id:solute_end_id,],
-                                    selector = selector,
-                                    diff_w = 0,
-                                    diff_g = 0)
-
-
-kwb.hydrus1d::write_selector(solutes_new, paths$selector)
-
-
-atm <- flextreat.hydrus1d::prepare_atmosphere_data()
+atm <- if(short) {
+  atm %>%
+  dplyr::filter(date >= "2017-05-01" & date <= "2020-04-30")
+} else {
+  atm %>%
+    dplyr::filter(date >= "2017-05-01" & date <= "2023-12-31")
+}
 
 #no-irrigation
 if(no_irrig) atm[,c("groundwater.mmPerDay", "clearwater.mmPerDay")] <- 0
@@ -228,19 +294,20 @@ sum_per_interval <- function(data, interval) {
   data_org
 }
 
-atm_selected <- flextreat.hydrus1d::select_hydrologic_years(atm)
-
 if(irrig_int) {
-atm_selected <- sum_per_interval(data = atm_selected,
-                                        interval = irrig_interval)
+
+atm <- sum_per_interval(data = atm, interval = irrig_interval)
 
 }
 
-atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
+atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm,
                                        conc_irrig_clearwater = soil_columns[solute_start_id:solute_end_id, paths$location],
                                        conc_irrig_groundwater = 0,
                                        conc_rain = 0
                                        )
+
+n_tsteps <- nrow(atm_prep)
+
 #atm <- atm_selected
 # days_monthy <- lubridate::days_in_month(seq.Date(from = min(atm$date),
 #                                                  to = max(atm$date),
@@ -289,6 +356,27 @@ atm_prep <- flextreat.hydrus1d::prepare_atmosphere(atm = atm_selected,
 
 writeLines(kwb.hydrus1d::write_atmosphere(atm = atm_prep),
            paths$atmosphere)
+
+
+selector <- kwb.hydrus1d::read_selector(path = paths$selector)
+
+selector$time$tMax <- n_tsteps
+selector$time$MPL <- 250
+
+selector$time$TPrint <- seq(0, n_tsteps, n_tsteps/selector$time$MPL)
+
+if (selector$time$TPrint[1] == 0) {
+  selector$time$TPrint[1] <- 1
+}
+
+solutes_new <- prepare_solute_input(dat = soil_columns[solute_start_id:solute_end_id,],
+                                    selector = selector,
+                                    diff_w = 0,
+                                    diff_g = 0)
+
+
+kwb.hydrus1d::write_selector(solutes_new, paths$selector)
+
 
 
 hydrus1d <- kwb.hydrus1d::read_hydrus1d(paths$hydrus1d)
@@ -457,7 +545,7 @@ paths$model_dir_vs
 scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
 
 solutes_list <- setNames(lapply(scenarios_solutes, function(scenario) {
-  solute_files <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no/",
+  solute_files <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/long/retardation_no/",
                            regexp = sprintf(".*%s.*_vs/solute\\d\\d?.out",
                                             scenario),
                            recurse = TRUE)
@@ -496,7 +584,7 @@ solutes_df <- solutes_list %>%
 
 solutes_df$soil <- solutes_df$sum_cv_top + solutes_df$sum_cv_bot + solutes_df$cv_ch1
 
-exp_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no/"
+exp_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/long/retardation_no/"
 saveRDS(solutes_list, file = file.path(exp_dir, "solutes-list_retardation_no.rds"))
 
 openxlsx::write.xlsx(solutes_df, file = file.path(exp_dir, "hydrus_scenarios_retardation-no.xlsx"))

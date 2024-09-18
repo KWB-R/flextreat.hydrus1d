@@ -12,7 +12,7 @@ get_hydrologic_years <- function(datetime) {
 years <- lubridate::year(datetime)
 months <- lubridate::month(datetime)
 
-hydro_years <- ifelse(months <= 10, years, years + 1)
+hydro_years <-  ifelse(months >= 11, years, years - 1)
 
 as.integer(hydro_years)
 
