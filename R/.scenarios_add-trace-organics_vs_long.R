@@ -145,6 +145,14 @@ soil_columns <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE
 
 
 short <- FALSE
+irrig_only_growing_season <- TRUE
+
+irrig_dir_string <- if(irrig_only_growing_season) {
+  "irrig-period_growing-season"
+} else {
+  "irrig-period_status-quo"
+}
+
 
 duration_string <- if (short == FALSE) {
   "long"
@@ -152,7 +160,7 @@ duration_string <- if (short == FALSE) {
   "short"
 }
 
-extreme_rain <- NULL # "wet", "dry"
+extreme_rain <- NULL #"dry" # "wet", "dry"
 
 extreme_rain_string <- if(any(c("dry", "wet") %in% extreme_rain)) {
   sprintf("_%s", extreme_rain)
@@ -179,7 +187,7 @@ sapply(seq_len(nrow(solute_ids)), function(i) {
   paths_list <- list(
     #extdata = system.file("extdata", package = "flextreat.hydrus1d"),
     #root_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no",
-    root_local = sprintf("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/%s/retardation_no", sprintf("%s%s", duration_string, extreme_rain_string)),
+    root_local = sprintf("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/%s/%s/retardation_no", irrig_dir_string, sprintf("%s%s", duration_string, extreme_rain_string)),
     #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
     #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
     exe_dir = "<root_local>",
@@ -258,6 +266,10 @@ library(flextreat.hydrus1d)
 
 atm <- get_atm(atm = flextreat.hydrus1d::prepare_atmosphere_data(),
                extreme_rain = extreme_rain)
+
+if(irrig_only_growing_season) {
+ atm[which(!lubridate::month(atm$date) %in% 4:9), c("groundwater.mmPerDay", "clearwater.mmPerDay")] <- 0
+}
 
 atm <- if(short) {
   atm %>%
@@ -545,7 +557,7 @@ paths$model_dir_vs
 scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
 
 solutes_list <- setNames(lapply(scenarios_solutes, function(scenario) {
-  solute_files <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/long/retardation_no/",
+  solute_files <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/long_wet/retardation_no/",
                            regexp = sprintf(".*%s.*_vs/solute\\d\\d?.out",
                                             scenario),
                            recurse = TRUE)
@@ -584,7 +596,7 @@ solutes_df <- solutes_list %>%
 
 solutes_df$soil <- solutes_df$sum_cv_top + solutes_df$sum_cv_bot + solutes_df$cv_ch1
 
-exp_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/long/retardation_no/"
+exp_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/long_wet/retardation_no/"
 saveRDS(solutes_list, file = file.path(exp_dir, "solutes-list_retardation_no.rds"))
 
 openxlsx::write.xlsx(solutes_df, file = file.path(exp_dir, "hydrus_scenarios_retardation-no.xlsx"))
