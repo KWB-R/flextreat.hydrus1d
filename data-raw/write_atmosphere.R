@@ -10,12 +10,10 @@ atmos <- kwb.hydrus1d::write_atmosphere(atm = atm_prep,
                                         MaxAL = nrow(atm_prep)
                                         )
 
-
 writeLines(text = atmos,
-           "inst/extdata/model/test/ATMOSPH.IN")
+           file.path("inst/extdata/model/test/ATMOSPH.IN"))
 
 
-
-writeLines(text = atmos,
-           system.file("extdata/model/test/ATMOSPH.IN", package = "flextreat.hydrus1d"))
+# writeLines(text = atmos,
+#            system.file("extdata/model/test/ATMOSPH.IN", package = "flextreat.hydrus1d"))
 
