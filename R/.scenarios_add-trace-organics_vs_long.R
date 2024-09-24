@@ -201,7 +201,7 @@ sapply(seq_len(nrow(solute_ids)), function(i) {
     solute_id_end = sprintf("%02d", solute_ids$end[i]),
     scenario = scenario,
     location = sprintf("ablauf_%s_median", treatment), #"ablauf_ka_median",
-    model_name_org = "ablauf_ka_median_<scenario>_soil-column_0105.h1d",
+    model_name_org = "ablauf_ka_median_<scenario>_soil-column_0105",
     model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>", #"1a2a_BTA_korr_test_40d",
     model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
     model_gui_path = "<exe_dir>/<model_name>.h1d",
