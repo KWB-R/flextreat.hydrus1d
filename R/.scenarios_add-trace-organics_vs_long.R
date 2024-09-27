@@ -602,8 +602,10 @@ solute_files_df <- tibble::tibble(path = solute_files,
 dplyr::left_join(solutes, solute_files_df)
 }), nm = scenarios_solutes)
 
-
 solutes_df <- solutes_list %>%
+  dplyr::bind_rows(.id = "scenario")
+
+solutes_df_stats <- solutes_df %>%
   dplyr::bind_rows(.id = "scenario") %>%
   dplyr::mutate(scen = stringr::str_remove(basename(dirname(path)), "_soil-column.*")) %>%
   dplyr::group_by(path, scen,substanz_nr, substanz_name) %>%
@@ -614,11 +616,11 @@ solutes_df <- solutes_list %>%
   dplyr::arrange(mass_balance_error_percent)
 
 
-solutes_df$soil <- solutes_df$sum_cv_top + solutes_df$sum_cv_bot + solutes_df$cv_ch1
+solutes_df_stats$soil <- solutes_df_stats$sum_cv_top + solutes_df_stats$sum_cv_bot + solutes_df_stats$cv_ch1
 
-saveRDS(solutes_list, file = file.path(scenario_dir, "solutes-list.rds"))
+saveRDS(solutes_df, file = file.path(scenario_dir, "solutes.rds"))
 
-openxlsx::write.xlsx(solutes_df, file = file.path(scenario_dir, "hydrus_scenarios.xlsx"))
+openxlsx::write.xlsx(solutes_df_stats, file = file.path(scenario_dir, "hydrus_scenarios.xlsx"))
 })
 
 
