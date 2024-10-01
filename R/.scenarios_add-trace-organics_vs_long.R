@@ -184,7 +184,7 @@ extreme_rain_string <- if(any(c("dry", "wet") %in% extreme_rain)) {
   ""
 }
 
-scenarios <- sapply(c(1,10), function(x) paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))) %>%
+scenarios <- sapply(c(1,10), function(x) paste0("soil-", c(1,3), sprintf("m_irrig-%02ddays", x))) %>%
   as.vector()
 #scenarios <- scenarios[c(1,3)]
 seq_start <- seq(1,nrow(soil_columns),10)
@@ -289,6 +289,20 @@ sapply(seq_len(nrow(loop_df)), function(i) {
   solute_end_id <- as.numeric(paths$solute_id_end)
   n_solutes <- solute_end_id - (solute_start_id - 1)
 
+  soil_depth_cm <- 100 *stringr::str_extract(paths$model_name, "soil-[0-9]+?m") %>%
+    stringr::str_extract("[0-9]") %>%  as.numeric()
+
+  if(soil_depth_cm != 200) {
+    soil_profile <- kwb.hydrus1d::read_profile(paths$profile)
+    profile_extended <- kwb.hydrus1d::extend_soil_profile(soil_profile$profile,
+                                                          x_end = -soil_depth_cm)
+
+    soil_profile_extended <- soil_profile
+    soil_profile_extended$profile <-  profile_extended
+
+    kwb.hydrus1d::write_profile(soil_profile_extended,
+                                path = paths$profile)
+  }
 
 no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
 irrig_pattern <- "irrig-[0-9][0-9]?days"
@@ -662,12 +676,10 @@ traveltimes_list <- setNames(lapply(scenarios, function(scenario) {
 
   try({
 
-    solute_files <- fs::dir_ls(paths$exe_dir,
-                               regexp = sprintf("tracer.*_vs/solute\\d\\d?.out",
-                                                scenario),
-                               recurse = TRUE)
-
-
+    solute_files <- fs::dir_ls(path = paths$exe_dir,
+                               recurse = TRUE,
+                               regexp = sprintf("tracer_%s_.*vs/solute\\d\\d?.out", scenario)
+                               )
 
     flextreat.hydrus1d::get_traveltimes(solute_files, dbg = TRUE)
   })}), nm = (scenarios))
@@ -687,7 +699,7 @@ traveltime_bp <- lapply(traveltimes_list, function(x) {
     dplyr::filter(percentiles == 0.5)
 }) %>% dplyr::bind_rows(.id = "scenario") %>%
   dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
-  dplyr::mutate(quarter = lubridate::quarter(traveltime_bp$date) %>% as.factor(),
+  dplyr::mutate(quarter = lubridate::quarter(date) %>% as.factor(),
                 soil_depth =  stringr::str_extract(scenario, "soil-.*m") %>%
                   stringr::str_remove_all("soil-|m") %>%  as.factor())
 
