@@ -162,7 +162,7 @@ soil_columns <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE
 tracer <- TRUE
 short <- FALSE
 
-irrig_only_growing_season <- FALSE
+irrig_only_growing_season <- TRUE
 irrig_dir_string <- if(irrig_only_growing_season) {
   "irrig-period_growing-season"
 } else {
@@ -184,7 +184,7 @@ extreme_rain_string <- if(any(c("dry", "wet") %in% extreme_rain)) {
   ""
 }
 
-scenarios <- sapply(c(1,10), function(x) paste0("soil-", c(1,3), sprintf("m_irrig-%02ddays", x))) %>%
+scenarios <- sapply(c(1,10), function(x) paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))) %>%
   as.vector()
 #scenarios <- scenarios[c(1,3)]
 seq_start <- seq(1,nrow(soil_columns),10)
@@ -289,21 +289,6 @@ sapply(seq_len(nrow(loop_df)), function(i) {
   solute_end_id <- as.numeric(paths$solute_id_end)
   n_solutes <- solute_end_id - (solute_start_id - 1)
 
-  soil_depth_cm <- 100 *stringr::str_extract(paths$model_name, "soil-[0-9]+?m") %>%
-    stringr::str_extract("[0-9]") %>%  as.numeric()
-
-  if(soil_depth_cm != 200) {
-    soil_profile <- kwb.hydrus1d::read_profile(paths$profile)
-    profile_extended <- kwb.hydrus1d::extend_soil_profile(soil_profile$profile,
-                                                          x_end = -soil_depth_cm)
-
-    soil_profile_extended <- soil_profile
-    soil_profile_extended$profile <-  profile_extended
-
-    kwb.hydrus1d::write_profile(soil_profile_extended,
-                                path = paths$profile)
-  }
-
 no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
 irrig_pattern <- "irrig-[0-9][0-9]?days"
 irrig_int <- stringr::str_detect(paths$model_dir, irrig_pattern)
@@ -326,6 +311,22 @@ model_out_files <- list.files(paths$model_dir, pattern = "\\.out$", full.names =
 
 if(length(model_out_files) > 0) {
 fs::file_delete(model_out_files)
+}
+
+
+soil_depth_cm <- 100 *stringr::str_extract(paths$model_name, "soil-[0-9]+?m") %>%
+  stringr::str_extract("[0-9]") %>%  as.numeric()
+
+if(soil_depth_cm != 200) {
+  soil_profile <- kwb.hydrus1d::read_profile(paths$profile)
+  profile_extended <- kwb.hydrus1d::extend_soil_profile(soil_profile$profile,
+                                                        x_end = -soil_depth_cm)
+
+  soil_profile_extended <- soil_profile
+  soil_profile_extended$profile <-  profile_extended
+
+  kwb.hydrus1d::write_profile(soil_profile_extended,
+                              path = paths$profile)
 }
 
 string_irrig_int <- stringr::str_extract(paths$model_dir, "[0-9][0-9]?days")
