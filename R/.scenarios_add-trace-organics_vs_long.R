@@ -161,28 +161,8 @@ soil_columns <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE
 
 tracer <- TRUE
 short <- FALSE
-
 irrig_only_growing_season <- TRUE
-irrig_dir_string <- if(irrig_only_growing_season) {
-  "irrig-period_growing-season"
-} else {
-  "irrig-period_status-quo"
-}
-
-duration_string <- if (short == FALSE) {
-  "long"
-} else {
-  "short"
-}
-
-extreme_rain <- NULL #NULL # "wet", "dry"
-
-
-extreme_rain_string <- if(any(c("dry", "wet") %in% extreme_rain)) {
-  sprintf("_%s", extreme_rain)
-} else {
-  ""
-}
+extreme_rains <-  c("wet", "dry") # c(NULL, "wet", "dry")
 
 scenarios <- sapply(c(1,10), function(x) paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))) %>%
   as.vector()
@@ -230,10 +210,29 @@ periods <- tibble::tibble(start = seq(1,length(days_monthy),10),
                             }
                           )
 
+sapply(extreme_rains, function(extreme_rain) {
 sapply(treatments, function(treatment) {
 sapply(scenarios, function(scenario) {
 
 tracer <- if(treatment == "tracer") { TRUE } else { FALSE}
+
+irrig_dir_string <- if(irrig_only_growing_season) {
+  "irrig-period_growing-season"
+} else {
+  "irrig-period_status-quo"
+}
+
+duration_string <- if (short == FALSE) {
+  "long"
+} else {
+  "short"
+}
+
+extreme_rain_string <- if(any(c("dry", "wet") %in% extreme_rain)) {
+  sprintf("_%s", extreme_rain)
+} else {
+  ""
+}
 
 loop_df <- if(tracer) {
   periods
@@ -489,7 +488,7 @@ kwb.hydrus1d::run_model(model_path = paths$model_dir_vs)
 })
 })
 })
-
+})
 
 
 
@@ -672,18 +671,24 @@ res_stats <- stats::setNames(lapply(scenario_dirs, function(scenario_dir) {
 
 View(solutes_list$`soil-1m_irrig-01days_soil-column`)
 
+model_paths <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/",
+                    recurse = TRUE,
+                    regexp = "tracer$",
+                    type = "directory")
 
-traveltimes_list <- setNames(lapply(scenarios, function(scenario) {
+traveltimes_list <- lapply(model_paths, function(model_path) {
+  setNames(lapply(scenarios, function(scenario) {
 
   try({
 
-    solute_files <- fs::dir_ls(path = paths$exe_dir,
+    solute_files <- fs::dir_ls(path = model_path,
                                recurse = TRUE,
                                regexp = sprintf("tracer_%s_.*vs/solute\\d\\d?.out", scenario)
                                )
 
     flextreat.hydrus1d::get_traveltimes(solute_files, dbg = TRUE)
   })}), nm = (scenarios))
+})
 
 
 sapply(seq_along(traveltimes_list), function(i) {
