@@ -63,5 +63,9 @@ reference:
       Helper functions for HYDRUS-1D
     contents:
       - add_times
+      - combine_dataframes
       - create_monthly_atm
+      - get_traveltimes
+      - interpolate_time
+      - recalculate_ctop_with_virtualstorage
       - select_hydrologic_years
