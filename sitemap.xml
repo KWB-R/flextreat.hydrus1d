@@ -1,93 +1,41 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/404.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_no-irrigation.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_python.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_r.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/authors.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/index.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/LICENSE-text.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/LICENSE.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/news/index.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/add_times.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_atmosphere.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_solute.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_tlevel.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/create_monthly_atm.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/evapo_p.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/get_hydrologic_years.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/irrigation.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/materials.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/pipe.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_atmosphere.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_monthly_atm.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_solute.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_waterbalance.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/precipitation_daily.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/precipitation_hourly.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/prepare_atmosphere.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/prepare_atmosphere_data.html</loc>
-  </url>
-  <url>
-    <loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/select_hydrologic_years.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/404.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_no-irrigation.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_python.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_r.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/authors.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/LICENSE-text.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/LICENSE.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/news/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/add_cBot_columns.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/add_times.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_atmosphere.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_solute.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/aggregate_tlevel.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/combine_dataframes.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/copy_column.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/create_monthly_atm.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/evapo_p.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/get_hydrologic_years.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/get_last_day_of_months.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/get_traveltimes.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/interpolate_time.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/irrigation.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/materials.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/pipe.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_atmosphere.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_monthly_atm.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_solute.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_traveltimes.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/plot_waterbalance.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/precipitation_daily.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/precipitation_hourly.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/prepare_atmosphere.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/prepare_atmosphere_data.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/recalculate_ctop_with_virtualstorage.html</loc></url>
+<url><loc>https://kwb-r.github.io/flextreat.hydrus1d/reference/select_hydrologic_years.html</loc></url>
 </urlset>
+
