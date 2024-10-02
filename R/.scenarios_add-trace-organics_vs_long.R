@@ -212,6 +212,7 @@ sapply(extreme_rains, function(extreme_rain) {
                             }
   )
 
+sapply(extreme_rains, function(extreme_rain) {
 sapply(treatments, function(treatment) {
 sapply(scenarios, function(scenario) {
 
