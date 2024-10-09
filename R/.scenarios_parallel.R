@@ -10,6 +10,8 @@ library(flextreat.hydrus1d)
 # get_atm ----------------------------------------------------------------------
 get_atm <- function(atm, extreme_rain = NULL)
 {
+  `%>%` <- magrittr::`%>%`
+
   if (is.null(extreme_rain)) {
     return(atm)
   }
@@ -77,10 +79,12 @@ prepare_solute_input <- function(
     Ks = NULL,
     SnkL1 = NULL,
     diff_w = 0, diff_g = 0,
-    kd = kd,
-    halftime_to_firstorderrate = halftime_to_firstorderrate
+    kd = NULL,
+    halftime_to_firstorderrate = NULL
 )
 {
+  `%>%` <- magrittr::`%>%`
+
   stopifnot(nrow(dat) <= 10)
 
   if (selector$solute$No.Solutes != nrow(dat)) {
@@ -173,6 +177,8 @@ halftime_to_firstorderrate <- function(half_time)
 # provide_soil_columns ---------------------------------------------------------
 provide_soil_columns <- function(path)
 {
+  `%>%` <- magrittr::`%>%`
+
   kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
     janitor::clean_names() %>%
     dplyr::mutate(half_life_days = dplyr::case_when(
@@ -213,14 +219,16 @@ soil_columns_selected <- soil_columns  %>%
 
 arg_combis <- kwb.utils::expandGrid(
   extreme_rain = c("", "wet", "dry"), # "" needs to be treated as NULL!
-  treatment = c("ka"), # "tracer" # c("ka", "o3")
+  treatment = c("tracer", "ka", "o3"), # "tracer" # c("ka", "o3")
   scenario = unlist(lapply(c(1,10), function(x) {
     paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))
   })),
-  irrig_only_growing_season = FALSE,
+  irrig_only_growing_season = c(TRUE, FALSE),
   duration_string = "long", #c("short", "long"),
   retardation_scenario = c("retardation_yes", "retardation_no", "tracer")
 )
+
+arg_combis <- arg_combis[arg_combis$treatment != "tracer" & arg_combis$retardation_scenario != "tracer" | arg_combis$treatment == "tracer" & arg_combis$retardation_scenario == "tracer", ]
 
 # generate_solute_ids ----------------------------------------------------------
 generate_solute_ids <- function(n)
@@ -259,6 +267,8 @@ generate_periods <- function(n)
 # prepare_files_for_irrig_int --------------------------------------------------
 prepare_files_for_irrig_int <- function(paths)
 {
+  `%>%` <- magrittr::`%>%`
+
   p <- kwb.utils::createAccessor(paths)
 
   copy <- function(fun, from, to) {
@@ -302,7 +312,7 @@ prepare_files_for_irrig_int <- function(paths)
     kwb.hydrus1d::write_profile(soil_profile_extended, path = p("profile"))
   }
 
-  string_irrig_int <- stringr::str_extract(model_dir, "[0-9][0-9]?days")
+  string_irrig_int <- stringr::str_extract(p("model_dir"), "[0-9][0-9]?days")
 
   # Return the string that is used as "irrig_interval"
   paste(
@@ -314,6 +324,8 @@ prepare_files_for_irrig_int <- function(paths)
 # sum_per_interval -------------------------------------------------------------
 sum_per_interval <- function(data, interval)
 {
+  `%>%` <- magrittr::`%>%`
+
   data_org <- data
   data <- dplyr::select(data, tidyselect::all_of(
     c("date", "groundwater.mmPerDay", "clearwater.mmPerDay")
@@ -348,20 +360,10 @@ get_valid_exe_path <- function(exe_dir)
 provide_paths <- function(config, start, end)
 {
   #Y:\WWT_Department\Projects\FlexTreat\Work-packages\AP3\3_1_4_Prognosemodell\Hydrus1D\irrig_fixed\irrig-period_status-quo\long_dry\retardation_no
-
+  tracer <- config$treatment == "tracer"
   # Define a path grammar
   PATH_GRAMMAR <- list(
-    #extdata = system.file("extdata", package = "flextreat.hydrus1d"),
-
-    ###root_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Vivian/Rohdaten/retardation_no",
-
-    ###root_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<irrig_dir_string>/<duration_string>/<extreme_rain_string>/<final_subdir>",
-    root_local = path.expand("~/Projekte/flextreat/<irrig_dir_string>/<duration_string><extreme_rain_string>/<final_subdir>"),
-
-    #root_local = sprintf("D:/hydrus1d/irrig_fixed/%s/%s/retardation_yes", irrig_dir_string, sprintf("%s%s", duration_string, extreme_rain_string)),
-    #root_local = "C:/kwb/projects/flextreat/hydrus/Szenarien_10day",
-    #root_local =  system.file("extdata/model", package = "flextreat.hydrus1d"),
-    exe_dir = "<root_local>",
+    exe_dir = sprintf("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<irrig_dir_string>/<duration_string><extreme_rain_string>/%s", config$retardation_scenario),
     model_name_org = "model_to_copy",
     model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>",
     ###model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
@@ -370,8 +372,7 @@ provide_paths <- function(config, start, end)
     model_gui_path = "<exe_dir>/<model_name>.h1d",
     modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
 
-    ###model_dir_org = "<exe_dir>/<model_name_org>",
-    model_dir_org = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/Hydrus1D/irrig_fixed/<irrig_dir_string>/<duration_string><extreme_rain_string>/<final_subdir>",
+    model_dir_org = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<model_name_org>",
 
     model_dir = "<exe_dir>/<model_name>",
     model_dir_vs = "<exe_dir>/<model_name>_vs",
@@ -399,8 +400,6 @@ provide_paths <- function(config, start, end)
     } #"ablauf_ka_median"
   )
 
-  tracer <- config$treatment == "tracer"
-
   # Resolve the path grammar by replacing the placeholders recursively
   kwb.utils::resolve(
     PATH_GRAMMAR,
@@ -415,14 +414,16 @@ provide_paths <- function(config, start, end)
     } else {
       ""
     },
-    final_subdir = ifelse(tracer, "tracer", config$retardation_scenario),
+    #final_subdir = ifelse(tracer, "tracer", config$retardation_scenario),
     scenario = config$scenario
   )
 }
 
 # inner_function ---------------------------------------------------------------
-inner_function <- function(atm_data, soil_columns, config, helper)
+inner_function <- function(config, atm_data, soil_columns, helper)
 {
+  `%>%` <- magrittr::`%>%`
+
   {
     # Define constants
     IRRIGATION_COLUMNS <- c("groundwater.mmPerDay", "clearwater.mmPerDay")
@@ -440,13 +441,15 @@ inner_function <- function(atm_data, soil_columns, config, helper)
       soil_columns$retard <- 1
     }
 
-    atm <- get_atm(atm_data, extreme_rain)
+    atm <- helper("get_atm")(atm_data, extreme_rain)
 
     if (config$irrig_only_growing_season) {
       atm[which(!lubridate::month(atm$date) %in% 4:9), IRRIGATION_COLUMNS] <- 0
     }
 
-    if (config$duration_string == "short") {
+    if (config$duration_string == "test") {
+      atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2018-04-30")
+    } else if (config$duration_string == "short") {
       atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2020-04-30")
     } else {
       atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2023-12-31")
@@ -565,8 +568,8 @@ inner_function <- function(atm_data, soil_columns, config, helper)
           selector = selector,
           diff_w = 0,
           diff_g = 0,
-          kd = kd,
-          halftime_to_firstorderrate = halftime_to_firstorderrate
+          kd = helper("kd"),
+          halftime_to_firstorderrate = helper("halftime_to_firstorderrate")
         )
 
         kwb.hydrus1d::write_selector(solutes_new, paths$selector)
@@ -627,13 +630,16 @@ inner_function <- function(atm_data, soil_columns, config, helper)
 
 # helper -----------------------------------------------------------------------
 helper <- kwb.utils::createAccessor(list(
+  get_atm = get_atm,
   generate_solute_ids = generate_solute_ids,
   provide_paths = provide_paths,
   prepare_files_for_irrig_int = prepare_files_for_irrig_int,
   sum_per_interval = sum_per_interval,
   prepare_solute_input = prepare_solute_input,
   halftime_to_firstorderrate = halftime_to_firstorderrate,
-  get_valid_exe_path = get_valid_exe_path
+  get_valid_exe_path = get_valid_exe_path,
+  generate_periods = generate_periods,
+  kd = kd
 ))
 
 # Main loop --------------------------------------------------------------------
@@ -650,9 +656,9 @@ if (FALSE) {
   for (config in configs) {
     #config <- configs[[1L]]
     inner_function(
+      config = config,
       atm_data = atm_data,
       soil_columns = soil_columns_selected,
-      config = config,
       helper = helper
     )
   }
@@ -663,15 +669,14 @@ if (FALSE) {
 
   parallel::parLapply(
     cl = cl,
-    X = scenarios,
+    X = configs,
     fun = inner_function,
     atm_data = atm_data,
     soil_columns = soil_columns_selected,
-    config = config,
     helper = helper
   )
 
-  on.exit(parallel::stopCluster(cl))
+  parallel::stopCluster(cl)
 }
 
 # After main loop --------------------------------------------------------------
