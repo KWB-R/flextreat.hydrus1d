@@ -228,7 +228,6 @@ arg_combis <- kwb.utils::expandGrid(
   retardation_scenario = c("retardation_yes", "retardation_no", "tracer")
 )
 
-arg_combis <- arg_combis[arg_combis$treatment != "tracer" & arg_combis$retardation_scenario != "tracer" | arg_combis$treatment == "tracer" & arg_combis$retardation_scenario == "tracer", ]
 
 # generate_solute_ids ----------------------------------------------------------
 generate_solute_ids <- function(n)
@@ -648,6 +647,13 @@ if (FALSE) {
 
   atm_data <- flextreat.hydrus1d::prepare_atmosphere_data()
 
+
+  #arg_combis <- arg_combis[arg_combis$scenario == "soil-3m_irrig-10days" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$duration_string == "long" & arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$extreme_rain == "", ]
+  #arg_combis <- arg_combis[arg_combis$treatment != "tracer" & arg_combis$retardation_scenario != "tracer" | arg_combis$treatment == "tracer" & arg_combis$retardation_scenario == "tracer", ]
+  #arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario == "soil-1m_irrig-10days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$extreme_rain == "",]
+  arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario != "soil-1m_irrig-01days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == TRUE & arg_combis$extreme_rain == "",]
+
+
   configs <- lapply(seq_len(nrow(arg_combis)), function(i) {
     as.list(arg_combis[i, ])
   })
@@ -664,7 +670,8 @@ if (FALSE) {
   }
 
   # Parallel loop
-  ncores <- parallel::detectCores() - 1L
+  ncores <- parallel::detectCores()
+  ncores <- 8
   cl <- parallel::makeCluster(ncores)
 
   parallel::parLapply(
@@ -807,16 +814,23 @@ if (FALSE)
   #scenarios_solutes <- paste0(scenarios, "_soil-column")
   scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
 
+  #root_path <- "D:/hydrus1d/irrig_fixed_01"
+  root_path <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
+
   scenario_dirs <- fs::dir_ls(
-    path = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed",
+    path =   root_path,
     recurse = TRUE,
     regexp = "retardation.*vs$",
     type = "directory"
   )
 
-  sapply(scenario_dirs, function(scenario_dir) {
+  # Set up parallel plan
+  system.time(expr = {
+    future::plan(future::multisession)
 
-    solutes_list <- lapply(
+solutes_list <- future.apply::future_sapply(scenario_dirs, function(scenario_dir) {
+
+    future.apply::future_lapply(
       setNames(nm = scenarios_solutes),
       function(scenario) {
 
@@ -845,6 +859,12 @@ if (FALSE)
       }
     )
 
+  })
+
+  # Close the parallel plan
+  future::plan(future::sequential)
+})
+
     solutes_df <- solutes_list %>%
       dplyr::bind_rows(.id = "scenario")
 
@@ -866,9 +886,9 @@ if (FALSE)
   })
 
   scenario_dirs <- fs::dir_ls(
-    path = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/",
+    path =   root_path,
     recurse = TRUE,
-    regexp = "retardation_no/hydrus_scenarios.xlsx$",
+    regexp = "retardation_no/.*hydrus_scenarios.xlsx$",
     type = "file"
   )
 
@@ -879,18 +899,78 @@ if (FALSE)
     }
   )
 
-  View(solutes_list$`soil-1m_irrig-01days_soil-column`)
+  load_default <- res_stats$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx` %>%
+    # dplyr::mutate(retardation = basename(dirname(dirname(path))),
+    #               duration = basename(dirname(dirname(dirname(path)))),
+    #               irrigation_period = basename(dirname(dirname(dirname(dirname((path))))))) %>%
+    dplyr::select(- path, - scen, - mass_balance_error_percent, - soil)
+
+
+  res_stats_df <- dplyr::bind_rows(res_stats) %>%
+    dplyr::mutate(retardation = basename(dirname(dirname(path))),
+                  duration = basename(dirname(dirname(dirname(path)))),
+                  irrigation_period = basename(dirname(dirname(dirname(dirname((path))))))) %>%
+    dplyr::select(- path, - mass_balance_error_percent, - soil)
+
+
+  names(res_stats_df)[4:6] <- paste0("default_",   names(res_stats_df)[4:6])
+
+  res_stats_df <- res_stats_df %>%
+    dplyr::left_join(load_default, by = c("substanz_nr", "substanz_name"))
+
+  View(res_stats_df)
+
+  res_stats_df %>%
+    ggplot2::ggplot(mapping = ggplot2::aes_string(x = "scen",
+                                           y = ))
+
+
+ #root_path <- "D:/hydrus1d/irrig_fixed_01"
+ root_path <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
 
   model_paths <- fs::dir_ls(
-    "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/",
+    path =   root_path,
     recurse = TRUE,
     regexp = "tracer$",
     type = "directory"
   )
 
+  #model_paths <- model_paths[stringr::str_detect(model_paths, "wet|dry", negate = TRUE)]
+
+  scenarios <- sapply(c(1,10), function(x) paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))) %>%
+    as.vector()
+
+  #unique(configs$scenario)
+
+  #traveltimes_list$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/tracer`[!sapply(traveltimes_list$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/tracer`, function(x) any(class(x) == "try-error"))]
+
+  ### read traveltimes sequential
+  system.time(
   traveltimes_list <- lapply(model_paths, function(model_path) {
     setNames(nm = (scenarios), lapply(scenarios, function(scenario) {
       try({
+        message(sprintf("Scenario: %s", scenario))
+        solute_files <- fs::dir_ls(
+          path = model_path,
+          recurse = TRUE,
+          regexp = sprintf("tracer_%s_.*vs/solute\\d\\d?.out", scenario)
+        )
+        flextreat.hydrus1d::get_traveltimes(solute_files, dbg = TRUE)
+      })
+    }))
+  }))
+
+  ### read traveltimes in parallel
+  library(future.apply)
+
+  # Set up parallel plan
+  system.time(expr = {
+  future::plan(future::multisession)
+
+  traveltimes_list <- future.apply::future_lapply(model_paths, function(model_path) {
+    setNames(nm = (scenarios), future.apply::future_lapply(scenarios, function(scenario) {
+      try({
+        message(sprintf("Scenario: %s", scenario))
         solute_files <- fs::dir_ls(
           path = model_path,
           recurse = TRUE,
@@ -900,21 +980,19 @@ if (FALSE)
       })
     }))
   })
+  }
+  )
+
+  # Close the parallel plan
+  future::plan(future::sequential)
+  traveltimes_list_backup <-  traveltimes_list
 
   sapply(seq_along(traveltimes_list), function(i) {
 
-    label <- stringr::str_remove(
-      names(traveltimes_list)[i],
-      "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/"
-    )
-
-    htmlwidgets::saveWidget(
-      flextreat.hydrus1d::plot_traveltimes(
-        dplyr::bind_rows(traveltimes_list[[i]]),
-        title = label,
-        ylim = c(0, 650)
-      ),
-      file = sprintf("traveltimes_%s.html", label))
+    htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_list[[i]] %>% dplyr::bind_rows(),
+                                                                 title = sprintf("%s", extrahiere_letzte_drei_teile(names(traveltimes_list)[i])),
+                                                                 ylim = c(0,650)),
+                            file = sprintf("traveltimes_%s.html", names(traveltimes_list)[i]))
   })
 
 
@@ -937,13 +1015,24 @@ if (FALSE)
   {
     pdff <- "traveltimes_per-scenario.pdf"
     kwb.utils::preparePdf(pdff)
-    sapply(seq_along(traveltimes_list), function(i) {
-      traveltimes_list_sel <- traveltimes_list[[i]]
+    # sapply(names(traveltimes_list), function(path) {
 
-      label <-  extrahiere_letzte_drei_teile(names(traveltimes_list)[i])
+      # traveltimes_sel <- traveltimes_list[[path]] %>% dplyr::bind_rows()
+      #
+      # label <-  extrahiere_letzte_drei_teile(path)
 
-      traveltime_bp <- lapply(traveltimes_list_sel, function(x) {
+      # traveltime_bp <- traveltimes_sel %>%
+      #       dplyr::bind_rows() %>%
+      #       dplyr::filter(percentiles == 0.5) %>%
+      #   dplyr::bind_rows(.id = "scenario") %>%
+      #   dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
+      #   dplyr::mutate(quarter = lubridate::quarter(date) %>% as.factor(),
+      #                 soil_depth =  stringr::str_extract(scenario, "soil-.*m") %>%
+      #                   stringr::str_remove_all("soil-|m") %>%  as.factor())
+
+      traveltime_bp <- lapply(traveltimes_list, function(x) {
         x %>%
+          dplyr::bind_rows() %>%
           dplyr::filter(percentiles == 0.5)
       }) %>% dplyr::bind_rows(.id = "scenario") %>%
         dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
@@ -960,25 +1049,24 @@ if (FALSE)
       traveltime_bp <- traveltime_bp %>%
         dplyr::left_join(scenario_by_median_traveltime)
 
-
       y_lim <- c(0,350)
 
 
       tt_bp_total <- traveltime_bp %>%
-        ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario, median), y = time_diff)) +
+        dplyr::mutate(scenario_short = extrahiere_letzte_drei_teile(scenario)) %>%
+        ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario_short, median), y = time_diff)) +
         ggplot2::geom_boxplot(outliers = FALSE) +
         ggplot2::geom_jitter(position = ggplot2::position_jitter(width = 0.1),
-                             #col = "darkgrey",
+                             col = "darkgrey",
                              alpha = 0.6) +
         ggplot2::ylim(y_lim) +
-        ggplot2::labs(y = "Median Traveltime (days)",
-                      x = sprintf("Scenario (%s)", label),
+        ggplot2::labs(y = "Median Traveltime (days)", x = "Scenario",
                       title = "Boxplot: median traveltime total") +
         ggplot2::theme_bw() +
-        ggplot2::theme(legend.position = "top")
+        ggplot2::theme(axis.text.x =  ggplot2::element_text(angle = 90, vjust = 0.5, hjust=1))
 
       print(tt_bp_total)
-    })
+
 
     kwb.utils::finishAndShowPdf(pdff)
 
@@ -1050,26 +1138,17 @@ if (FALSE)
       dplyr::select(- time_top, - time_bot) %>%
       dplyr::rename(time_diff_base = time_diff)
 
-    median_base_percent <- median(scenario_base_median$time_diff_base, na.rm = TRUE)
-
-    scenario_by_median_traveltime <- traveltimes_df %>%
-      dplyr::group_by(scenario_main, scenario_name) %>%
-      dplyr::summarise(median = median(time_diff, na.rm = TRUE),
-                       median_percent = round(100 * median / median_base_percent, 2)) %>%
-      dplyr::arrange(median_percent)
-
     traveltimes_bp <- traveltimes_df %>%
-      dplyr::left_join(scenario_base_median) %>%
-      dplyr::left_join(scenario_by_median_traveltime)
-
-  }
+      dplyr::filter(percentiles == 0.5) %>%
+      dplyr::left_join(scenario_base_median[, c("month_id", "time_diff_base")] %>% dplyr::mutate(percentiles = 0.5)) %>%
+      dplyr::mutate(time_diff_percent = 100 + 100 * (time_diff - time_diff_base) / time_diff_base)
 
   # Plotting ---------------------------------------------------------------------
 
   y_lim <- c(0,350)
 
   tt_bp_percent <- traveltimes_bp %>%
-    ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario_name, median),
+    ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario_name, time_diff_percent),
                                  y = time_diff,
                                  col = scenario_main)) +
     ggplot2::geom_boxplot(outliers = FALSE) +
@@ -1154,5 +1233,30 @@ if (FALSE)
     title = "Boxplot: median traveltime by quarter",
     file = "boxplot_traveltimes-median_quarter.html"
   )
+
+  }
+
+### check model
+
+  model_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
+
+  atm_files <- fs::dir_ls(model_dir, recurse = TRUE, type = "file", regexp = "tracer.*ATMOSPH.IN")
+
+  atm_df <- lapply(atm_files, function(file) {
+    atm <- kwb.hydrus1d::read_atmosph(file)
+    tibble::tibble(path = file,
+                   Prec_sum = sum(atm$data$Prec, na.rm = TRUE))
+  }) %>% dplyr::bind_rows()
+
+  path_split <- stringr::str_split_fixed(atm_df$path,"/", 13)
+
+  atm_df %>%
+    dplyr::mutate(irrig_period = path_split[,9],
+                  duration_extreme = path_split[,10],
+                  scenario= path_split[,12] %>% stringr::str_remove("_soil-column_.*")) %>%
+    dplyr::group_by(irrig_period, duration_extreme, scenario) %>%
+    dplyr::summarise(Prec_mean = sum(Prec_sum)/dplyr::n()) %>%
+    View()
+
 
 }
