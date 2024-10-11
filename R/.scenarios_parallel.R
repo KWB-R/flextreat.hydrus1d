@@ -828,17 +828,12 @@ if (FALSE)
   system.time(expr = {
     future::plan(future::multisession)
 
-solutes_list <- future.apply::future_sapply(scenario_dirs, function(scenario_dir) {
+    future.apply::future_sapply(scenario_dirs, function(scenario_dir) {
 
-    future.apply::future_lapply(
-      setNames(nm = scenarios_solutes),
-      function(scenario) {
-
-        solute_files <- fs::dir_ls(
-          scenario_dir,
-          regexp = "solute\\d\\d?.out",
-          recurse = TRUE
-        )
+      solutes_list <- setNames(lapply(scenarios_solutes, function(scenario) {
+        solute_files <- fs::dir_ls(scenario_dir,
+                                   regexp = "solute\\d\\d?.out",
+                                   recurse = TRUE)
 
         stopifnot(length(solute_files) > 0)
 
@@ -846,43 +841,40 @@ solutes_list <- future.apply::future_sapply(scenario_dirs, function(scenario_dir
           kwb.hydrus1d::read_solute(file, dbg = TRUE)
         }), nm = solute_files) %>% dplyr::bind_rows(.id = "path")
 
-        solute_files_df <- tibble::tibble(
-          path = solute_files,
-          model_solute_id = path  %>%  basename() %>% stringr::str_extract(pattern = "[0-9][0-9]?") %>% as.integer(),
-          soilcolumn_id_start = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(1,2) %>% as.integer(),
-          soilcolumn_id_end = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(3,4) %>% as.integer(),
-          soil_column_id = soilcolumn_id_start + model_solute_id - 1
-        ) %>%
+
+        solute_files_df <- tibble::tibble(path = solute_files,
+                                          model_solute_id = path  %>%  basename() %>% stringr::str_extract(pattern = "[0-9][0-9]?") %>% as.integer(),
+                                          soilcolumn_id_start = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(1,2) %>% as.integer(),
+                                          soilcolumn_id_end = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(3,4) %>% as.integer(),
+                                          soil_column_id = soilcolumn_id_start + model_solute_id - 1) %>%
           dplyr::left_join(soil_columns, by = c(soil_column_id = "id"))
 
+
         dplyr::left_join(solutes, solute_files_df)
-      }
-    )
+      }), nm = scenarios_solutes)
 
-  })
+      solutes_df <- solutes_list %>%
+        dplyr::bind_rows(.id = "scenario")
 
-  # Close the parallel plan
-  future::plan(future::sequential)
-})
+      solutes_df_stats <- solutes_df %>%
+        dplyr::bind_rows(.id = "scenario") %>%
+        dplyr::mutate(scen = stringr::str_remove(basename(dirname(path)), "_soil-column.*")) %>%
+        dplyr::group_by(path, scen,substanz_nr, substanz_name) %>%
+        dplyr::summarise(sum_cv_top = max(sum_cv_top),
+                         sum_cv_bot = min(sum_cv_bot),
+                         cv_ch1 = min(cv_ch1)) %>%
+        dplyr::mutate(mass_balance_error_percent = 100*(sum_cv_top + cv_ch1 + sum_cv_bot)/sum_cv_top) %>%
+        dplyr::arrange(mass_balance_error_percent)
 
-    solutes_df <- solutes_list %>%
-      dplyr::bind_rows(.id = "scenario")
 
-    solutes_df_stats <- solutes_df %>%
-      dplyr::bind_rows(.id = "scenario") %>%
-      dplyr::mutate(scen = stringr::str_remove(basename(dirname(path)), "_soil-column.*")) %>%
-      dplyr::group_by(path, scen,substanz_nr, substanz_name) %>%
-      dplyr::summarise(sum_cv_top = max(sum_cv_top),
-                       sum_cv_bot = min(sum_cv_bot),
-                       cv_ch1 = min(cv_ch1)) %>%
-      dplyr::mutate(mass_balance_error_percent = 100*(sum_cv_top + cv_ch1 + sum_cv_bot)/sum_cv_top) %>%
-      dplyr::arrange(mass_balance_error_percent)
+      solutes_df_stats$soil <- solutes_df_stats$sum_cv_top + solutes_df_stats$sum_cv_bot + solutes_df_stats$cv_ch1
 
-    solutes_df_stats$soil <- solutes_df_stats$sum_cv_top + solutes_df_stats$sum_cv_bot + solutes_df_stats$cv_ch1
+      saveRDS(solutes_df, file = file.path(scenario_dir, "solutes.rds"))
 
-    saveRDS(solutes_df, file = file.path(scenario_dir, "solutes.rds"))
-
-    openxlsx::write.xlsx(solutes_df_stats, file = file.path(scenario_dir, "hydrus_scenarios.xlsx"))
+      openxlsx::write.xlsx(solutes_df_stats, file = file.path(scenario_dir, "hydrus_scenarios.xlsx"))
+    })
+    # Close the parallel plan
+    future::plan(future::sequential)
   })
 
   scenario_dirs <- fs::dir_ls(
@@ -899,7 +891,8 @@ solutes_list <- future.apply::future_sapply(scenario_dirs, function(scenario_dir
     }
   )
 
-  load_default <- res_stats$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx` %>%
+ # load_default <- res_stats$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx`
+  load_default <- res_stats$`C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/irrig-period_status-quo/long/retardation_no/ablauf_o3_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx` %>%
     # dplyr::mutate(retardation = basename(dirname(dirname(path))),
     #               duration = basename(dirname(dirname(dirname(path)))),
     #               irrigation_period = basename(dirname(dirname(dirname(dirname((path))))))) %>%
@@ -916,13 +909,13 @@ solutes_list <- future.apply::future_sapply(scenario_dirs, function(scenario_dir
   names(res_stats_df)[4:6] <- paste0("default_",   names(res_stats_df)[4:6])
 
   res_stats_df <- res_stats_df %>%
-    dplyr::left_join(load_default, by = c("substanz_nr", "substanz_name"))
+    dplyr::left_join(load_default, by = c("substanz_nr", "substanz_name")) %>%
+    dplyr::mutate(percental_load_gw = dplyr::if_else(abs(default_sum_cv_bot) < 10000 | abs(sum_cv_bot) < 10000,
+                                                     NA_real_,
+                                                     100 + 100 * (abs(sum_cv_bot) - abs(default_sum_cv_bot)) /  abs(default_sum_cv_bot)))
 
   View(res_stats_df)
 
-  res_stats_df %>%
-    ggplot2::ggplot(mapping = ggplot2::aes_string(x = "scen",
-                                           y = ))
 
 
  #root_path <- "D:/hydrus1d/irrig_fixed_01"
