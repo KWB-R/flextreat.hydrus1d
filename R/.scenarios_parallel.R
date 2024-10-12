@@ -593,6 +593,9 @@ inner_function <- function(config, atm_data, soil_columns, helper)
         atm_default <- atmos
 
         tlevel <- kwb.hydrus1d::read_tlevel(paths$t_level)
+        max(tlevel$sum_infil)
+        max(tlevel$sum_evap)
+        sum(solute$difftime * as.numeric(solute$c_top) * as.numeric(tlevel$r_top))
 
         vs_atm <- flextreat.hydrus1d::recalculate_ctop_with_virtualstorage(
           atm = atm_default$data,
@@ -709,11 +712,9 @@ if (FALSE)
   solute <- read_solute_with_difftime(paths$solute)
   (1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop2)) * 100
 
-  sum(atmos$data$Prec)
-  max(tlevel$sum_infil)
-  max(tlevel$sum_evap)
+  solute$time[min(which.max(solute$sum_cv_top))]
 
-  sum(solute$difftime * as.numeric(solute$c_top) * as.numeric(tlevel$r_top))
+  sum(atmos$data$Prec)
 
   solute_day <- flextreat.hydrus1d::aggregate_solute(solute)
 
@@ -816,8 +817,6 @@ if (FALSE)
 # Rest -------------------------------------------------------------------------
 if (FALSE)
 {
-  solute$time[min(which(solute$sum_cv_top == max(solute$sum_cv_top)))]
-
   paths$model_dir_vs
 
   #scenarios_solutes <- paste0(scenarios, "_soil-column")
