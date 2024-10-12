@@ -905,7 +905,7 @@ if (FALSE)
   })
 
   scenario_dirs <- fs::dir_ls(
-    path =   root_path,
+    path = root_path,
     recurse = TRUE,
     regexp = "retardation_no/.*hydrus_scenarios.xlsx$",
     type = "file"
@@ -1021,288 +1021,288 @@ if (FALSE)
         ),
       file = sprintf("traveltimes_%s.html", name))
   })
+}
+
+# Plotting ---------------------------------------------------------------------
+if (FALSE)
+{
+  pdff <- "traveltimes_per-scenario.pdf"
+  kwb.utils::preparePdf(pdff)
+  # sapply(names(traveltimes_list), function(path) {
+
+  # traveltimes_sel <- traveltimes_list[[path]] %>% dplyr::bind_rows()
+  #
+  # label <- extrahiere_letzte_teile(path)
+
+  # traveltime_bp <- traveltimes_sel %>%
+  #       dplyr::bind_rows() %>%
+  #       dplyr::filter(percentiles == 0.5) %>%
+  #   dplyr::bind_rows(.id = "scenario") %>%
+  #   dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
+  #   dplyr::mutate(quarter = lubridate::quarter(date) %>% as.factor(),
+  #                 soil_depth =  stringr::str_extract(scenario, "soil-.*m") %>%
+  #                   stringr::str_remove_all("soil-|m") %>%  as.factor())
+
+  traveltime_bp <- lapply(traveltimes_list, function(x) {
+    x %>%
+      dplyr::bind_rows() %>%
+      dplyr::filter(percentiles == 0.5)
+  }) %>%
+    dplyr::bind_rows(.id = "scenario") %>%
+    dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
+    dplyr::mutate(
+      quarter = lubridate::quarter(date) %>% as.factor(),
+      soil_depth = stringr::str_extract(scenario, "soil-.*m") %>%
+        stringr::str_remove_all("soil-|m") %>%
+        as.factor()
+    )
+
+  scenario_by_median_traveltime <- traveltime_bp %>%
+    dplyr::group_by(scenario) %>%
+    dplyr::summarise(median = median(time_diff, na.rm = TRUE)) %>%
+    dplyr::arrange(median)
+
+  traveltime_bp <- traveltime_bp %>%
+    dplyr::left_join(scenario_by_median_traveltime)
+
+  y_lim <- c(0, 350)
+
+  tt_bp_total <- traveltime_bp %>%
+    dplyr::mutate(scenario_short = extrahiere_letzte_teile(scenario)) %>%
+    ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario_short, median), y = time_diff)) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    ggplot2::geom_jitter(
+      position = ggplot2::position_jitter(width = 0.1),
+      col = "darkgrey",
+      alpha = 0.6
+    ) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::labs(
+      y = "Median Traveltime (days)", x = "Scenario",
+      title = "Boxplot: median traveltime total"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1)
+    )
+
+  print(tt_bp_total)
+
+  kwb.utils::finishAndShowPdf(pdff)
+
+  pdff <- "traveltimes_all.pdf"
+  kwb.utils::preparePdf(pdff)
+
+  traveltimes_df <- lapply(traveltimes_list, dplyr::bind_rows) %>%
+    dplyr::bind_rows(.id = "scenario_main_raw") %>%
+    dplyr::mutate(
+      scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>%
+        stringr::str_remove_all("tracer_"),
+      scenario_main =  scenario_main_raw %>%
+        extrahiere_letzte_teile(),
+      quarter = lubridate::quarter(date) %>%
+        as.factor(),
+      soil_depth =  stringr::str_extract(scenario_name, "soil-.*m") %>%
+        stringr::str_remove_all("soil-|m") %>%  as.factor())
+
+  scenario_by_median_traveltime <- traveltimes_df %>%
+    dplyr::group_by(scenario_main, scenario_name) %>%
+    dplyr::summarise(median = median(time_diff, na.rm = TRUE)) %>%
+    dplyr::arrange(median)
+
+  traveltimes_bp <- traveltimes_df %>%
+    dplyr::left_join(scenario_by_median_traveltime)
+
+  y_lim <- c(0,350)
+
+  tt_bp_total <- traveltimes_bp %>%
+    ggplot2::ggplot(ggplot2::aes(
+      x = forcats::fct_reorder(scenario_name, median),
+      y = time_diff,
+      col = scenario_main
+    )) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    # ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
+    #   jitter.width = 0.1,
+    #   dodge.width = 0.75),
+    #   alpha = 0.6) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::labs(
+      y = "Median Traveltime (days)",
+      x = "Scenario",
+      title = "Boxplot: median traveltime total"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "top")
+
+  print(tt_bp_total)
+
+  kwb.utils::finishAndShowPdf(pdff)
+
+  htmlwidgets::saveWidget(
+    widget = plotly::ggplotly(tt_bp_total),
+    file = "traveltimes_all.html"
+  )
+
+  pdff <- "traveltimes_all_percent.pdf"
+  kwb.utils::preparePdf(pdff)
+
+  traveltimes_df <- lapply(traveltimes_list, dplyr::bind_rows) %>%
+    dplyr::bind_rows(.id = "scenario_main_raw") %>%
+    dplyr::mutate(
+      scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>%
+        stringr::str_remove_all("tracer_"),
+      scenario_main =  scenario_main_raw %>%
+        extrahiere_letzte_teile(),
+      quarter = lubridate::quarter(date) %>%
+        as.factor(),
+      soil_depth = stringr::str_extract(scenario_name, "soil-.*m") %>%
+        stringr::str_remove_all("soil-|m") %>%  as.factor()
+    )
+
+  scenario_base_median <- traveltimes_df %>%
+    dplyr::filter(
+      scenario_name == "soil-2m_irrig-10days",
+      scenario_main == "irrig-period_status-quo_long_tracer",
+      percentiles == 0.5
+    ) %>%
+    dplyr::select(- time_top, - time_bot) %>%
+    dplyr::rename(time_diff_base = time_diff)
+
+  traveltimes_bp <- traveltimes_df %>%
+    dplyr::filter(percentiles == 0.5) %>%
+    dplyr::left_join(
+      scenario_base_median[, c("month_id", "time_diff_base")] %>%
+        dplyr::mutate(percentiles = 0.5)
+    ) %>%
+    dplyr::mutate(
+      time_diff_percent = 100 + 100 * (time_diff - time_diff_base) / time_diff_base
+    )
 
   # Plotting
-  if (FALSE)
-  {
-    pdff <- "traveltimes_per-scenario.pdf"
-    kwb.utils::preparePdf(pdff)
-    # sapply(names(traveltimes_list), function(path) {
 
-    # traveltimes_sel <- traveltimes_list[[path]] %>% dplyr::bind_rows()
-    #
-    # label <- extrahiere_letzte_teile(path)
+  y_lim <- c(0,350)
 
-    # traveltime_bp <- traveltimes_sel %>%
-    #       dplyr::bind_rows() %>%
-    #       dplyr::filter(percentiles == 0.5) %>%
-    #   dplyr::bind_rows(.id = "scenario") %>%
-    #   dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
-    #   dplyr::mutate(quarter = lubridate::quarter(date) %>% as.factor(),
-    #                 soil_depth =  stringr::str_extract(scenario, "soil-.*m") %>%
-    #                   stringr::str_remove_all("soil-|m") %>%  as.factor())
+  tt_bp_percent <- traveltimes_bp %>%
+    ggplot2::ggplot(ggplot2::aes(
+      x = forcats::fct_reorder(scenario_name, time_diff_percent),
+      y = time_diff,
+      col = scenario_main
+    )) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    # ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
+    #   jitter.width = 0.1,
+    #   dodge.width = 0.75),
+    #   alpha = 0.6) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::labs(
+      y = "Median Traveltime (%) compared to Status Quo",
+      x = "Scenario",
+      title = "Boxplot: median traveltime percent"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "top")
 
-    traveltime_bp <- lapply(traveltimes_list, function(x) {
-      x %>%
-        dplyr::bind_rows() %>%
-        dplyr::filter(percentiles == 0.5)
-    }) %>%
-      dplyr::bind_rows(.id = "scenario") %>%
-      dplyr::filter(!stringr::str_detect(scenario, "1.5")) %>%
-      dplyr::mutate(
-        quarter = lubridate::quarter(date) %>% as.factor(),
-        soil_depth = stringr::str_extract(scenario, "soil-.*m") %>%
-          stringr::str_remove_all("soil-|m") %>%
-          as.factor()
-      )
+  print(tt_bp_percent)
 
-    scenario_by_median_traveltime <- traveltime_bp %>%
-      dplyr::group_by(scenario) %>%
-      dplyr::summarise(median = median(time_diff, na.rm = TRUE)) %>%
-      dplyr::arrange(median)
+  kwb.utils::finishAndShowPdf(pdff)
 
-    traveltime_bp <- traveltime_bp %>%
-      dplyr::left_join(scenario_by_median_traveltime)
+  htmlwidgets::saveWidget(
+    widget = plotly::ggplotly(tt_bp_total),
+    file = "traveltimes_all.html"
+  )
 
-    y_lim <- c(0, 350)
+  tt_bp_total_soil <- traveltime_bp %>%
+    ggplot2::ggplot(ggplot2::aes(
+      x = forcats::fct_reorder(scenario, median),
+      y = time_diff,
+      col = soil_depth
+    )) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    ggplot2::geom_jitter(
+      position = ggplot2::position_jitter(width = 0.1),
+      alpha = 0.6
+    ) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::labs(
+      y = "Median Traveltime (days)",
+      x = "Scenario",
+      col = "Soil Depth (m)",
+      title = "Boxplot: median traveltime total"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "top")
 
-    tt_bp_total <- traveltime_bp %>%
-      dplyr::mutate(scenario_short = extrahiere_letzte_teile(scenario)) %>%
-      ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario_short, median), y = time_diff)) +
-      ggplot2::geom_boxplot(outliers = FALSE) +
-      ggplot2::geom_jitter(
-        position = ggplot2::position_jitter(width = 0.1),
-        col = "darkgrey",
-        alpha = 0.6
-      ) +
-      ggplot2::ylim(y_lim) +
-      ggplot2::labs(
-        y = "Median Traveltime (days)", x = "Scenario",
-        title = "Boxplot: median traveltime total"
-      ) +
-      ggplot2::theme_bw() +
-      ggplot2::theme(
-        axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1)
-      )
+  tt_bp_total_soil
 
-    print(tt_bp_total)
+  tt_bp_total_quartal <- traveltime_bp %>%
+    ggplot2::ggplot(ggplot2::aes(
+      x = forcats::fct_reorder(scenario, median),
+      y = time_diff
+    )) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    ggplot2::geom_jitter(
+      position = ggplot2::position_jitter(width = 0.1),
+      mapping = ggplot2::aes(col = quarter),
+      alpha = 0.6
+    ) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::labs(
+      y = "Median Traveltime (days)", x = "Scenario",
+      col = "Quartal",
+      title = "Boxplot: median traveltime total"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "top")
 
-    kwb.utils::finishAndShowPdf(pdff)
+  tt_bp_total_quartal
 
-    pdff <- "traveltimes_all.pdf"
-    kwb.utils::preparePdf(pdff)
+  tt_bp_quarter <- traveltime_bp %>%
+    ggplot2::ggplot(ggplot2::aes(
+      x = forcats::fct_reorder(scenario, median),
+      y = time_diff,
+      col = quarter
+    )) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    ggplot2::geom_jitter(
+      position = ggplot2::position_jitterdodge(
+        jitter.width = 0.1,
+        dodge.width = 0.75
+      ),
+      alpha = 0.6
+    ) +
+    ggplot2::labs(
+      y = "Median Traveltime (days)",
+      x = "Scenario",
+      col = "Quartal",
+      title = "Boxplot: median traveltime by quarter"
+    ) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "top")
 
-    traveltimes_df <- lapply(traveltimes_list, dplyr::bind_rows) %>%
-      dplyr::bind_rows(.id = "scenario_main_raw") %>%
-      dplyr::mutate(
-        scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>%
-          stringr::str_remove_all("tracer_"),
-        scenario_main =  scenario_main_raw %>%
-          extrahiere_letzte_teile(),
-        quarter = lubridate::quarter(date) %>%
-          as.factor(),
-        soil_depth =  stringr::str_extract(scenario_name, "soil-.*m") %>%
-          stringr::str_remove_all("soil-|m") %>%  as.factor())
+  tt_bp_quarter
 
-    scenario_by_median_traveltime <- traveltimes_df %>%
-      dplyr::group_by(scenario_main, scenario_name) %>%
-      dplyr::summarise(median = median(time_diff, na.rm = TRUE)) %>%
-      dplyr::arrange(median)
+  # Save HTML widgets
+  htmlwidgets::saveWidget(
+    widget = plotly::ggplotly(tt_bp_total),
+    title = "Boxplot: median traveltime total",
+    file = "boxplot_traveltimes-median_total.html"
+  )
 
-    traveltimes_bp <- traveltimes_df %>%
-      dplyr::left_join(scenario_by_median_traveltime)
+  htmlwidgets::saveWidget(
+    plotly::ggplotly(tt_bp_quarter),
+    title = "Boxplot: median traveltime by quarter",
+    file = "boxplot_traveltimes-median_quarter.html"
+  )
 
-    y_lim <- c(0,350)
+}
 
-    tt_bp_total <- traveltimes_bp %>%
-      ggplot2::ggplot(ggplot2::aes(
-        x = forcats::fct_reorder(scenario_name, median),
-        y = time_diff,
-        col = scenario_main
-      )) +
-      ggplot2::geom_boxplot(outliers = FALSE) +
-      # ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
-      #   jitter.width = 0.1,
-      #   dodge.width = 0.75),
-      #   alpha = 0.6) +
-      ggplot2::ylim(y_lim) +
-      ggplot2::labs(
-        y = "Median Traveltime (days)",
-        x = "Scenario",
-        title = "Boxplot: median traveltime total"
-      ) +
-      ggplot2::theme_bw() +
-      ggplot2::theme(legend.position = "top")
-
-    print(tt_bp_total)
-
-    kwb.utils::finishAndShowPdf(pdff)
-
-    htmlwidgets::saveWidget(
-      widget = plotly::ggplotly(tt_bp_total),
-      file = "traveltimes_all.html"
-    )
-
-    pdff <- "traveltimes_all_percent.pdf"
-    kwb.utils::preparePdf(pdff)
-
-    traveltimes_df <- lapply(traveltimes_list, dplyr::bind_rows) %>%
-      dplyr::bind_rows(.id = "scenario_main_raw") %>%
-      dplyr::mutate(
-        scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>%
-          stringr::str_remove_all("tracer_"),
-        scenario_main =  scenario_main_raw %>%
-          extrahiere_letzte_teile(),
-        quarter = lubridate::quarter(date) %>%
-          as.factor(),
-        soil_depth = stringr::str_extract(scenario_name, "soil-.*m") %>%
-          stringr::str_remove_all("soil-|m") %>%  as.factor()
-      )
-
-    scenario_base_median <- traveltimes_df %>%
-      dplyr::filter(
-        scenario_name == "soil-2m_irrig-10days",
-        scenario_main == "irrig-period_status-quo_long_tracer",
-        percentiles == 0.5
-      ) %>%
-      dplyr::select(- time_top, - time_bot) %>%
-      dplyr::rename(time_diff_base = time_diff)
-
-    traveltimes_bp <- traveltimes_df %>%
-      dplyr::filter(percentiles == 0.5) %>%
-      dplyr::left_join(
-        scenario_base_median[, c("month_id", "time_diff_base")] %>%
-          dplyr::mutate(percentiles = 0.5)
-      ) %>%
-      dplyr::mutate(
-        time_diff_percent = 100 + 100 * (time_diff - time_diff_base) / time_diff_base
-      )
-
-    # Plotting
-
-    y_lim <- c(0,350)
-
-    tt_bp_percent <- traveltimes_bp %>%
-      ggplot2::ggplot(ggplot2::aes(
-        x = forcats::fct_reorder(scenario_name, time_diff_percent),
-        y = time_diff,
-        col = scenario_main
-      )) +
-      ggplot2::geom_boxplot(outliers = FALSE) +
-      # ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
-      #   jitter.width = 0.1,
-      #   dodge.width = 0.75),
-      #   alpha = 0.6) +
-      ggplot2::ylim(y_lim) +
-      ggplot2::labs(
-        y = "Median Traveltime (%) compared to Status Quo",
-        x = "Scenario",
-        title = "Boxplot: median traveltime percent"
-      ) +
-      ggplot2::theme_bw() +
-      ggplot2::theme(legend.position = "top")
-
-    print(tt_bp_percent)
-
-    kwb.utils::finishAndShowPdf(pdff)
-
-    htmlwidgets::saveWidget(
-      widget = plotly::ggplotly(tt_bp_total),
-      file = "traveltimes_all.html"
-    )
-
-    tt_bp_total_soil <- traveltime_bp %>%
-      ggplot2::ggplot(ggplot2::aes(
-        x = forcats::fct_reorder(scenario, median),
-        y = time_diff,
-        col = soil_depth
-      )) +
-      ggplot2::geom_boxplot(outliers = FALSE) +
-      ggplot2::geom_jitter(
-        position = ggplot2::position_jitter(width = 0.1),
-        alpha = 0.6
-      ) +
-      ggplot2::ylim(y_lim) +
-      ggplot2::labs(
-        y = "Median Traveltime (days)",
-        x = "Scenario",
-        col = "Soil Depth (m)",
-        title = "Boxplot: median traveltime total"
-      ) +
-      ggplot2::theme_bw() +
-      ggplot2::theme(legend.position = "top")
-
-    tt_bp_total_soil
-
-    tt_bp_total_quartal <- traveltime_bp %>%
-      ggplot2::ggplot(ggplot2::aes(
-        x = forcats::fct_reorder(scenario, median),
-        y = time_diff
-      )) +
-      ggplot2::geom_boxplot(outliers = FALSE) +
-      ggplot2::geom_jitter(
-        position = ggplot2::position_jitter(width = 0.1),
-        mapping = ggplot2::aes(col = quarter),
-        alpha = 0.6
-      ) +
-      ggplot2::ylim(y_lim) +
-      ggplot2::labs(
-        y = "Median Traveltime (days)", x = "Scenario",
-        col = "Quartal",
-        title = "Boxplot: median traveltime total"
-      ) +
-      ggplot2::theme_bw() +
-      ggplot2::theme(legend.position = "top")
-
-    tt_bp_total_quartal
-
-    tt_bp_quarter <- traveltime_bp %>%
-      ggplot2::ggplot(ggplot2::aes(
-        x = forcats::fct_reorder(scenario, median),
-        y = time_diff,
-        col = quarter
-      )) +
-      ggplot2::geom_boxplot(outliers = FALSE) +
-      ggplot2::geom_jitter(
-        position = ggplot2::position_jitterdodge(
-          jitter.width = 0.1,
-          dodge.width = 0.75
-        ),
-        alpha = 0.6
-      ) +
-      ggplot2::labs(
-        y = "Median Traveltime (days)",
-        x = "Scenario",
-        col = "Quartal",
-        title = "Boxplot: median traveltime by quarter"
-      ) +
-      ggplot2::ylim(y_lim) +
-      ggplot2::theme_bw() +
-      ggplot2::theme(legend.position = "top")
-
-    tt_bp_quarter
-
-    # Save HTML widgets
-    htmlwidgets::saveWidget(
-      widget = plotly::ggplotly(tt_bp_total),
-      title = "Boxplot: median traveltime total",
-      file = "boxplot_traveltimes-median_total.html"
-    )
-
-    htmlwidgets::saveWidget(
-      plotly::ggplotly(tt_bp_quarter),
-      title = "Boxplot: median traveltime by quarter",
-      file = "boxplot_traveltimes-median_quarter.html"
-    )
-
-  }
-
-  ### check model
-
-  model_dir <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
-
+# Check model ------------------------------------------------------------------
+if (FALSE)
+{
   atm_files <- fs::dir_ls(
-    model_dir,
+    path = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed",
     recurse = TRUE,
     type = "file",
     regexp = "tracer.*ATMOSPH.IN"
