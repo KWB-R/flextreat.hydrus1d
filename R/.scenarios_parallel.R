@@ -687,25 +687,32 @@ if (FALSE) {
   parallel::stopCluster(cl)
 }
 
-# After main loop --------------------------------------------------------------
+# Read and plot solute ---------------------------------------------------------
 if (FALSE)
 {
-  solute <- kwb.hydrus1d::read_solute(paths$solute_vs) %>%
-    dplyr::mutate(difftime = c(0,diff(time)))
+  read_solute_with_difftime <- function(file) {
+    kwb.hydrus1d::read_solute(file) %>%
+      dplyr::mutate(difftime = c(0, diff(time)))
+  }
 
-  max(solute$sum_cv_top) + min(solute$sum_cv_bot) + min(solute$cv_ch1)
+  plot_solute <- function(solute) {
+    plot(solute$time, solute$c_top)
+    points(solute$c_bot, col = "red")
+  }
 
-  plot(solute$time, solute$c_top)
-  points(solute$c_bot, col = "red")
+  solute <- read_solute_with_difftime(paths$solute_vs)
+  with(solute, max(sum_cv_top) + min(sum_cv_bot) + min(cv_ch1))
+  plot_solute(solute)
   (1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop)) * 100
 
   paths$solute_vs2 <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/H1D/1a2a_tracer_vs/solute2.out"
-
-  solute <- kwb.hydrus1d::read_solute(paths$solute) %>%
-    dplyr::mutate(difftime = c(0,diff(time)))
-
+  solute <- read_solute_with_difftime(paths$solute)
   (1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop2)) * 100
+}
 
+# Rest -------------------------------------------------------------------------
+if (FALSE)
+{
   sum(atmos$data$Prec)
   max(tlevel$sum_infil)
   max(tlevel$sum_evap)
