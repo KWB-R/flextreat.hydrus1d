@@ -1022,21 +1022,6 @@ if (FALSE)
       file = sprintf("traveltimes_%s.html", name))
   })
 
-  # extrahiere_letzte_drei_teile -------------------------------------------------
-  extrahiere_letzte_drei_teile <- function(pfad)
-  {
-    sapply(pfad, function(pf) {
-
-      # Teile den Pfad anhand des Schraegstrichs auf
-      teile <- unlist(strsplit(pf, "/"))
-
-      # Waehle die letzten drei Teile aus
-      letzte_drei_teile <- tail(teile, 3)
-
-      paste0(letzte_drei_teile, collapse = "_")
-    })
-  }
-
   # Plotting
   if (FALSE)
   {
@@ -1344,4 +1329,19 @@ if (FALSE)
     dplyr::group_by(irrig_period, duration_extreme, scenario) %>%
     dplyr::summarise(Prec_mean = sum(Prec_sum)/dplyr::n()) %>%
     View()
+}
+
+# extrahiere_letzte_drei_teile -------------------------------------------------
+extrahiere_letzte_drei_teile <- function(pfad)
+{
+  sapply(pfad, function(pf) {
+
+    # Teile den Pfad anhand des Schraegstrichs auf
+    teile <- unlist(strsplit(pf, "/"))
+
+    # Waehle die letzten drei Teile aus
+    letzte_drei_teile <- tail(teile, 3)
+
+    paste0(letzte_drei_teile, collapse = "_")
+  })
 }
