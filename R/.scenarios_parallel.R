@@ -1,9 +1,10 @@
-# Preface ----------------------------------------------------------------------
+# Install packages -------------------------------------------------------------
 if (FALSE) {
   remotes::install_github("kwb-r/kwb.hydrus1d@dev")
   remotes::install_github("kwb-r/flextreat.hydrus1d@dev")
 }
 
+# Load packages ----------------------------------------------------------------
 library(magrittr)
 library(flextreat.hydrus1d)
 
