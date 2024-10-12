@@ -1016,7 +1016,7 @@ if (FALSE)
       traveltimes_list[[name]] %>%
         dplyr::bind_rows() %>%
         flextreat.hydrus1d::plot_traveltimes(
-          title = sprintf("%s", extrahiere_letzte_drei_teile(name)),
+          title = sprintf("%s", extrahiere_letzte_teile(name)),
           ylim = c(0, 650)
         ),
       file = sprintf("traveltimes_%s.html", name))
@@ -1031,7 +1031,7 @@ if (FALSE)
 
     # traveltimes_sel <- traveltimes_list[[path]] %>% dplyr::bind_rows()
     #
-    # label <-  extrahiere_letzte_drei_teile(path)
+    # label <- extrahiere_letzte_teile(path)
 
     # traveltime_bp <- traveltimes_sel %>%
     #       dplyr::bind_rows() %>%
@@ -1067,7 +1067,7 @@ if (FALSE)
     y_lim <- c(0, 350)
 
     tt_bp_total <- traveltime_bp %>%
-      dplyr::mutate(scenario_short = extrahiere_letzte_drei_teile(scenario)) %>%
+      dplyr::mutate(scenario_short = extrahiere_letzte_teile(scenario)) %>%
       ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(scenario_short, median), y = time_diff)) +
       ggplot2::geom_boxplot(outliers = FALSE) +
       ggplot2::geom_jitter(
@@ -1098,7 +1098,7 @@ if (FALSE)
         scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>%
           stringr::str_remove_all("tracer_"),
         scenario_main =  scenario_main_raw %>%
-          extrahiere_letzte_drei_teile(),
+          extrahiere_letzte_teile(),
         quarter = lubridate::quarter(date) %>%
           as.factor(),
         soil_depth =  stringr::str_extract(scenario_name, "soil-.*m") %>%
@@ -1152,7 +1152,7 @@ if (FALSE)
         scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>%
           stringr::str_remove_all("tracer_"),
         scenario_main =  scenario_main_raw %>%
-          extrahiere_letzte_drei_teile(),
+          extrahiere_letzte_teile(),
         quarter = lubridate::quarter(date) %>%
           as.factor(),
         soil_depth = stringr::str_extract(scenario_name, "soil-.*m") %>%
@@ -1331,17 +1331,11 @@ if (FALSE)
     View()
 }
 
-# extrahiere_letzte_drei_teile -------------------------------------------------
-extrahiere_letzte_drei_teile <- function(pfad)
+# extrahiere_letzte_teile ------------------------------------------------------
+extrahiere_letzte_teile <- function(pfad, n = 3L)
 {
-  sapply(pfad, function(pf) {
-
-    # Teile den Pfad anhand des Schraegstrichs auf
-    teile <- unlist(strsplit(pf, "/"))
-
-    # Waehle die letzten drei Teile aus
-    letzte_drei_teile <- tail(teile, 3)
-
-    paste0(letzte_drei_teile, collapse = "_")
-  })
+  sapply(
+    strsplit(pfad, "/"),
+    function(x) paste0(tail(x, n), collapse = "_")
+  )
 }
