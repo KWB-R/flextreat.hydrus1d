@@ -781,7 +781,7 @@ if (FALSE)
   plotly::ggplotly(p)
 }
 
-# Read and aggregate tlevel ----------------------------------------------------
+# Read and aggregate tlevel, plot water balance --------------------------------
 if (FALSE)
 {
   t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
@@ -801,11 +801,8 @@ if (FALSE)
     col_aggr = "year_hydrologic"
   ) %>%
     dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
-}
 
-# Plot water balance -----------------------------------------------------------
-if (FALSE)
-{
+  # Plot water balance
   plots <- list(
     tlevel_aggr_date = tlevel_aggr_date,
     tlevel_aggr_yearmonth = tlevel_aggr_yearmonth,
