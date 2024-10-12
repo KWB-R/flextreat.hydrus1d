@@ -708,36 +708,28 @@ if (FALSE)
   paths$solute_vs2 <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/H1D/1a2a_tracer_vs/solute2.out"
   solute <- read_solute_with_difftime(paths$solute)
   (1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop2)) * 100
+
+  sum(atmos$data$Prec)
+  max(tlevel$sum_infil)
+  max(tlevel$sum_evap)
+}
+
+# Read and plot balance --------------------------------------------------------
+if (FALSE)
+{
+  kwb.hydrus1d::read_balance(paths$balance) %>%
+    dplyr::filter(subdomain_id == 0, time < 400, parameter == "CncBalT") %>%
+    ggplot2::ggplot(mapping = ggplot2::aes(
+      x = time,
+      y = value,
+      col = as.factor(solute_id)
+    )) +
+    ggplot2::geom_point()
 }
 
 # Rest -------------------------------------------------------------------------
 if (FALSE)
 {
-  sum(atmos$data$Prec)
-  max(tlevel$sum_infil)
-  max(tlevel$sum_evap)
-
-  balance <- kwb.hydrus1d::read_balance(paths$balance)
-
-  balance %>%
-    dplyr::filter(
-      subdomain_id == 0,
-      time < 400,
-      parameter == "CncBalT"
-    ) %>%
-    ggplot2::ggplot(
-      mapping = ggplot2::aes(x = time, y = value, col = as.factor(solute_id))
-    ) + ggplot2::geom_point()
-
-  balance %>%
-    dplyr::filter(
-      subdomain_id == 0,
-      time < 400,
-      parameter == "CncBalR"
-    ) %>%
-    ggplot2::ggplot(mapping = ggplot2::aes(x = time, y = value, col = as.factor(solute_id))) +
-    ggplot2::geom_point()
-
   sum(solute$difftime * as.numeric(solute$c_top) * as.numeric(tlevel$r_top))
 
   solute_day <- flextreat.hydrus1d::aggregate_solute(solute)
