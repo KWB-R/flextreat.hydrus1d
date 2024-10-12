@@ -992,7 +992,6 @@ if (FALSE)
   # Set up parallel plan
   system.time(expr = {
     future::plan(future::multisession)
-
     traveltimes_list <- future.apply::future_lapply(model_paths, function(model_path) {
       setNames(nm = (scenarios), future.apply::future_lapply(scenarios, function(scenario) {
         try({
@@ -1006,30 +1005,29 @@ if (FALSE)
         })
       }))
     })
-  }
-  )
+  })
 
   # Close the parallel plan
   future::plan(future::sequential)
-  traveltimes_list_backup <-  traveltimes_list
+  traveltimes_list_backup <- traveltimes_list
 
-  sapply(seq_along(traveltimes_list), function(i) {
-
+  sapply(names(traveltimes_list), function(name) {
     htmlwidgets::saveWidget(
-      flextreat.hydrus1d::plot_traveltimes(
-        traveltimes_list[[i]] %>%
-          dplyr::bind_rows(),
-        title = sprintf("%s", extrahiere_letzte_drei_teile(names(traveltimes_list)[i])),
-        ylim = c(0, 650)
-      ),
-      file = sprintf("traveltimes_%s.html", names(traveltimes_list)[i]))
+      traveltimes_list[[name]] %>%
+        dplyr::bind_rows() %>%
+        flextreat.hydrus1d::plot_traveltimes(
+          title = sprintf("%s", extrahiere_letzte_drei_teile(name)),
+          ylim = c(0, 650)
+        ),
+      file = sprintf("traveltimes_%s.html", name))
   })
 
   # extrahiere_letzte_drei_teile -------------------------------------------------
   extrahiere_letzte_drei_teile <- function(pfad)
   {
     sapply(pfad, function(pf) {
-      # Teile den Pfad anhand des Schrägstrichs auf
+
+      # Teile den Pfad anhand des Schraegstrichs auf
       teile <- unlist(strsplit(pf, "/"))
 
       # Waehle die letzten drei Teile aus
@@ -1103,7 +1101,6 @@ if (FALSE)
       )
 
     print(tt_bp_total)
-
 
     kwb.utils::finishAndShowPdf(pdff)
 
