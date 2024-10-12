@@ -712,24 +712,7 @@ if (FALSE)
   sum(atmos$data$Prec)
   max(tlevel$sum_infil)
   max(tlevel$sum_evap)
-}
 
-# Read and plot balance --------------------------------------------------------
-if (FALSE)
-{
-  kwb.hydrus1d::read_balance(paths$balance) %>%
-    dplyr::filter(subdomain_id == 0, time < 400, parameter == "CncBalT") %>%
-    ggplot2::ggplot(mapping = ggplot2::aes(
-      x = time,
-      y = value,
-      col = as.factor(solute_id)
-    )) +
-    ggplot2::geom_point()
-}
-
-# Rest -------------------------------------------------------------------------
-if (FALSE)
-{
   sum(solute$difftime * as.numeric(solute$c_top) * as.numeric(tlevel$r_top))
 
   solute_day <- flextreat.hydrus1d::aggregate_solute(solute)
@@ -755,7 +738,26 @@ if (FALSE)
   sum(solute$cv_top[condition])
 
   solute_aggr_date <- flextreat.hydrus1d::aggregate_solute(solute)
+  solute_aggr_date
+  View(solute_aggr_date)
+}
 
+# Read and plot balance --------------------------------------------------------
+if (FALSE)
+{
+  kwb.hydrus1d::read_balance(paths$balance) %>%
+    dplyr::filter(subdomain_id == 0, time < 400, parameter == "CncBalT") %>%
+    ggplot2::ggplot(mapping = ggplot2::aes(
+      x = time,
+      y = value,
+      col = as.factor(solute_id)
+    )) +
+    ggplot2::geom_point()
+}
+
+# Rest -------------------------------------------------------------------------
+if (FALSE)
+{
   obsnode <- kwb.hydrus1d::read_obsnode(paths$obs_node)
 
   obsnode %>%
@@ -778,15 +780,12 @@ if (FALSE)
 
   plotly::ggplotly(p)
 
-  solute_aggr_date
-  View(tlevel_aggr_date)
-  View(solute_aggr_date)
-
   t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
   t_level
 
   ## t_level aggregate
   tlevel_aggr_date <- flextreat.hydrus1d::aggregate_tlevel(t_level)
+  View(tlevel_aggr_date)
 
   tlevel_aggr_yearmonth <- flextreat.hydrus1d::aggregate_tlevel(
     t_level,
