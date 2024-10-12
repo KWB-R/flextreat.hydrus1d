@@ -755,7 +755,7 @@ if (FALSE)
     ggplot2::geom_point()
 }
 
-# Rest -------------------------------------------------------------------------
+# Read and plot obsnode --------------------------------------------------------
 if (FALSE)
 {
   obsnode <- kwb.hydrus1d::read_obsnode(paths$obs_node)
@@ -765,10 +765,10 @@ if (FALSE)
     dplyr::group_by(node_id) %>%
     dplyr::summarise(sum = sum(value))
 
-  profile <- kwb.hydrus1d::read_profile(paths$profile)
-
   p <- obsnode %>%
-    dplyr::left_join(profile[,c("node_id", "x")]) %>%
+    dplyr::left_join(
+      kwb.hydrus1d::read_profile(paths$profile)[, c("node_id", "x")]
+    ) %>%
     dplyr::filter(variable == "conc1") %>%
     ggplot2::ggplot(mapping = ggplot2::aes(
       x = time,
@@ -779,7 +779,11 @@ if (FALSE)
     ggplot2::theme_bw()
 
   plotly::ggplotly(p)
+}
 
+# Read and aggregate tlevel ----------------------------------------------------
+if (FALSE)
+{
   t_level <- kwb.hydrus1d::read_tlevel(paths$t_level)
   t_level
 
@@ -797,15 +801,24 @@ if (FALSE)
     col_aggr = "year_hydrologic"
   ) %>%
     dplyr::filter(.data$diff_time >= 364) ### filter out as only may-october
+}
 
-  wb_date_plot <- flextreat.hydrus1d::plot_waterbalance(tlevel_aggr_date)
-  wb_yearmonth_plot <- flextreat.hydrus1d::plot_waterbalance(tlevel_aggr_yearmonth)
-  wb_yearhydrologic_plot <- flextreat.hydrus1d::plot_waterbalance(tlevel_aggr_year_hydrologic)
+# Plot water balance -----------------------------------------------------------
+if (FALSE)
+{
+  plots <- list(
+    tlevel_aggr_date = tlevel_aggr_date,
+    tlevel_aggr_yearmonth = tlevel_aggr_yearmonth,
+    tlevel_aggr_year_hydrologic = tlevel_aggr_year_hydrologic
+  ) %>%
+    flextreat.hydrus1d::plot_waterbalance
 
-  wb_date_plot
-  wb_yearmonth_plot
-  wb_yearhydrologic_plot
+  print(plots)
+}
 
+# Rest -------------------------------------------------------------------------
+if (FALSE)
+{
   solute$time[min(which(solute$sum_cv_top == max(solute$sum_cv_top)))]
 
   paths$model_dir_vs
