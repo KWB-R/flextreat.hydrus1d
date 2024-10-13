@@ -94,6 +94,80 @@ if (FALSE)
   parallel::stopCluster(cl)
 }
 
+# provide_paths ----------------------------------------------------------------
+provide_paths <- function(config = NULL, start = "", end = "")
+{
+  #<ap3_1_4>\Hydrus1D\irrig_fixed\irrig-period_status-quo\long_dry\retardation_no
+
+  PATH_GRAMMAR <- list(
+    AP_3_1_4_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell",
+    AP_3_1_4_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell",
+    USER = Sys.getenv("USERNAME"),
+    file_soil_columns = "<AP_3_1_4>/StofflicheModellrandbedingungen.xlsx",
+    file_substance_classes = "inst/extdata/input-data/substance_classes.csv",
+    exe_dir = "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed/<irrig_dir_string>/<duration_string><extreme_rain_string>/<retardation_scenario>",
+    model_name_org = "model_to_copy",
+    model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>",
+    ###model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
+    model_gui_path_org = "<model_dir_org>/<model_name_org>.h1d",
+    model_gui_path = "<exe_dir>/<model_name>.h1d",
+    modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
+    model_dir_org = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<model_name_org>",
+    model_dir = "<exe_dir>/<model_name>",
+    model_dir_vs = "<exe_dir>/<model_name>_vs",
+    atmosphere = "<model_dir>/ATMOSPH.IN",
+    atmosphere_vs = "<model_dir_vs>/ATMOSPH.IN",
+    a_level = "<model_dir>/A_LEVEL.out",
+    hydrus1d = "<model_dir>/HYDRUS1D.DAT",
+    selector = "<model_dir>/SELECTOR.IN",
+    profile = "<model_dir>/PROFILE.DAT",
+    obs_node = "<model_dir>/Obs_Node.out",
+    balance = "<model_dir>/BALANCE.out",
+    t_level = "<model_dir>/T_LEVEL.out",
+    t_level_vs = "<model_dir_vs>/T_LEVEL.out",
+    runinf = "<model_dir>/Run_Inf.out",
+    solute_id = "1",
+    solute = "<model_dir>/solute<solute_id>.out",
+    solute_vs = "<model_dir_vs>/solute<solute_id>.out",
+    soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
+  )
+
+  if (is.null(config)) {
+    return(PATH_GRAMMAR)
+  }
+
+  tracer <- config$treatment == "tracer"
+  # Define a path grammar
+
+  # Resolve the path grammar by replacing the placeholders recursively
+  kwb.utils::resolve(
+    PATH_GRAMMAR,
+    AP_3_1_4 = "AP_3_1_4_server",
+    irrig_dir_string = ifelse(
+      config$irrig_only_growing_season,
+      "irrig-period_growing-season",
+      "irrig-period_status-quo"
+    ),
+    duration_string = config$duration_string,
+    extreme_rain_string = if (config$extreme_rain != "") {
+      paste0("_", config$extreme_rain)
+    } else {
+      ""
+    },
+    #final_subdir = ifelse(tracer, "tracer", config$retardation_scenario),
+    scenario = config$scenario,
+    retardation_scenario = config$retardation_scenario,
+    solute_id_start = sprintf("%02d", start),
+    solute_id_end = sprintf("%02d", end),
+    location = if (tracer) {
+      "tracer"
+    } else {
+      # e.g. "ablauf_ka_median"
+      sprintf("ablauf_%s_median", config$treatment)
+    }
+  )
+}
+
 # provide_soil_columns ---------------------------------------------------------
 provide_soil_columns <- function(file)
 {
@@ -367,80 +441,6 @@ get_valid_exe_path <- function(exe_dir)
   } else {
     kwb.hydrus1d::check_hydrus_exe()
   }
-}
-
-# provide_paths ----------------------------------------------------------------
-provide_paths <- function(config = NULL, start = "", end = "")
-{
-  #<ap3_1_4>\Hydrus1D\irrig_fixed\irrig-period_status-quo\long_dry\retardation_no
-
-  PATH_GRAMMAR <- list(
-    AP_3_1_4_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell",
-    AP_3_1_4_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell",
-    USER = Sys.getenv("USERNAME"),
-    file_soil_columns = "<AP_3_1_4>/StofflicheModellrandbedingungen.xlsx",
-    file_substance_classes = "inst/extdata/input-data/substance_classes.csv",
-    exe_dir = "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed/<irrig_dir_string>/<duration_string><extreme_rain_string>/<retardation_scenario>",
-    model_name_org = "model_to_copy",
-    model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>",
-    ###model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
-    model_gui_path_org = "<model_dir_org>/<model_name_org>.h1d",
-    model_gui_path = "<exe_dir>/<model_name>.h1d",
-    modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
-    model_dir_org = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<model_name_org>",
-    model_dir = "<exe_dir>/<model_name>",
-    model_dir_vs = "<exe_dir>/<model_name>_vs",
-    atmosphere = "<model_dir>/ATMOSPH.IN",
-    atmosphere_vs = "<model_dir_vs>/ATMOSPH.IN",
-    a_level = "<model_dir>/A_LEVEL.out",
-    hydrus1d = "<model_dir>/HYDRUS1D.DAT",
-    selector = "<model_dir>/SELECTOR.IN",
-    profile = "<model_dir>/PROFILE.DAT",
-    obs_node = "<model_dir>/Obs_Node.out",
-    balance = "<model_dir>/BALANCE.out",
-    t_level = "<model_dir>/T_LEVEL.out",
-    t_level_vs = "<model_dir_vs>/T_LEVEL.out",
-    runinf = "<model_dir>/Run_Inf.out",
-    solute_id = "1",
-    solute = "<model_dir>/solute<solute_id>.out",
-    solute_vs = "<model_dir_vs>/solute<solute_id>.out",
-    soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
-  )
-
-  if (is.null(config)) {
-    return(PATH_GRAMMAR)
-  }
-
-  tracer <- config$treatment == "tracer"
-  # Define a path grammar
-
-  # Resolve the path grammar by replacing the placeholders recursively
-  kwb.utils::resolve(
-    PATH_GRAMMAR,
-    AP_3_1_4 = "AP_3_1_4_server",
-    irrig_dir_string = ifelse(
-      config$irrig_only_growing_season,
-      "irrig-period_growing-season",
-      "irrig-period_status-quo"
-    ),
-    duration_string = config$duration_string,
-    extreme_rain_string = if (config$extreme_rain != "") {
-      paste0("_", config$extreme_rain)
-    } else {
-      ""
-    },
-    #final_subdir = ifelse(tracer, "tracer", config$retardation_scenario),
-    scenario = config$scenario,
-    retardation_scenario = config$retardation_scenario,
-    solute_id_start = sprintf("%02d", start),
-    solute_id_end = sprintf("%02d", end),
-    location = if (tracer) {
-      "tracer"
-    } else {
-      # e.g. "ablauf_ka_median"
-      sprintf("ablauf_%s_median", config$treatment)
-    }
-  )
 }
 
 # inner_function ---------------------------------------------------------------
