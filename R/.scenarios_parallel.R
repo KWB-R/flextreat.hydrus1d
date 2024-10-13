@@ -63,7 +63,6 @@ prepare_solute_input <- function(
 {
   `%>%` <- magrittr::`%>%`
 
-  # helper function to calculate kd
   # https://www3.epa.gov/ceampubl/learn2model/part-two/onsite/retard.html
   kd <- function(porosity, retardation, bulk_density) {
     (retardation - 1) * porosity / bulk_density
@@ -134,14 +133,6 @@ prepare_solute_input <- function(
   )
 }
 
-# get_mean ---------------------------------------------------------------------
-get_mean <- function(col)
-{
-  x <- stringr::str_split_fixed(col, "-", n = 2)
-  mode(x) <- "numeric"
-  round(rowMeans(x), digits = 2)
-}
-
 # halftime_to_firstorderrate ---------------------------------------------------
 halftime_to_firstorderrate <- function(half_time)
 {
@@ -157,6 +148,12 @@ halftime_to_firstorderrate <- function(half_time)
 provide_soil_columns <- function(path)
 {
   `%>%` <- magrittr::`%>%`
+
+  get_mean <- function(col) {
+    x <- stringr::str_split_fixed(col, "-", n = 2)
+    mode(x) <- "numeric"
+    round(rowMeans(x), digits = 2)
+  }
 
   kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
     janitor::clean_names() %>%
