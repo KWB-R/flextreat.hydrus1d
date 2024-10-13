@@ -205,23 +205,6 @@ prepare_solute_input <- function(
 # generate_solute_ids ----------------------------------------------------------
 generate_solute_ids <- function(n)
 {
-  seq_start <- seq(1, n, 10)
-
-  seq_end <- if (n > 10) {
-    seq(10, n, 10)
-  } else {
-    n
-  }
-
-  if (length(seq_end) < length(seq_start)) {
-    seq_end <- c(seq_end, n)
-  }
-
-  result <- tibble::tibble(
-    start = as.integer(seq_start),
-    end = as.integer(seq_end)
-  )
-
   ranges <- kwb.utils::startsToRanges(
     starts = seq.int(from = 1L, to = n, by = 10L),
     startOffset = 0L,
@@ -229,14 +212,10 @@ generate_solute_ids <- function(n)
     lastStop = as.integer(n)
   )
 
-  result_2 <- tibble::tibble(
+  tibble::tibble(
     start = ranges$from,
     end = ranges$to
   )
-
-  stopifnot(identical(result, result_2))
-
-  result_2
 }
 
 # generate_periods -------------------------------------------------------------
