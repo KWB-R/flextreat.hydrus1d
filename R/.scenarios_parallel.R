@@ -419,13 +419,14 @@ inner_function <- function(config, atm_data, soil_columns, helper)
       atm[which(!lubridate::month(atm$date) %in% 4:9), IRRIGATION_COLUMNS] <- 0
     }
 
-    if (config$duration_string == "test") {
-      atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2018-04-30")
-    } else if (config$duration_string == "short") {
-      atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2020-04-30")
-    } else {
-      atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2023-12-31")
-    }
+    periods <- list(
+      test = c("2017-05-01", "2018-04-30"),
+      short = c("2017-05-01", "2020-04-30"),
+      long = c("2017-05-01", "2023-12-31")
+    )
+
+    period <- kwb.utils::selectElements(periods, config$duration_string)
+    atm <- dplyr::filter(atm, date >= period[1L] & date <= period[2L])
 
     days_monthly <- lubridate::days_in_month(
       seq.Date(from = min(atm$date), to = max(atm$date), by = "month")
