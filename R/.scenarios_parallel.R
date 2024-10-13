@@ -8,17 +8,38 @@ if (FALSE) {
 library(magrittr)
 library(flextreat.hydrus1d)
 
+# MAIN: Provide directory structure and required files locally -----------------
+if (FALSE)
+{
+  grammar <- provide_paths()
+
+  if (!file.exists(grammar$AP_3_1_4_local)) {
+    kwb.utils::copyDirectoryStructure(
+      sourcedir = grammar$AP_3_1_4_server,
+      targetdir = grammar$AP_3_1_4_local
+    )
+  }
+
+  paths_server <- kwb.utils::resolve(grammar, AP_3_1_4 = "AP_3_1_4_server")
+  paths_local <- kwb.utils::resolve(grammar, AP_3_1_4 = "AP_3_1_4_local")
+
+  file.copy(paths_server$file_soil_columns, paths_local$file_soil_columns)
+  paths$file_substance_classes
+}
+
 # MAIN -------------------------------------------------------------------------
 if (FALSE)
 {
-  #path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_2_Boden-Grundwasser/daten_karten/Sickerwasserprognose/column-studies/Stoffeigenschaften_Säulen.xlsx"
-  path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/StofflicheModellrandbedingungen.xlsx"
+  grammar <- provide_paths()
 
-  soil_columns <- provide_soil_columns(path)
+  #paths <- kwb.utils::resolve(grammar, AP_3_1_4 = "AP_3_1_4_server")
+  paths <- kwb.utils::resolve(grammar, AP_3_1_4 = "AP_3_1_4_local")
+
+  soil_columns <- provide_soil_columns(file = paths$file_soil_columns)
+
+  selected_substances <- readr::read_csv(file = paths$file_substance_classes)
 
   ### Select 1 substance for 5 different half life classes defined in this table
-  selected_substances <- readr::read_csv("inst/extdata/input-data/substance_classes.csv")
-
   soil_columns_selected <- soil_columns  %>%
     dplyr::filter(substanz_nr %in% selected_substances$substance_id) %>%
     dplyr::mutate(id = 1:dplyr::n())
@@ -36,12 +57,10 @@ if (FALSE)
 
   atm_data <- flextreat.hydrus1d::prepare_atmosphere_data()
 
-
   #arg_combis <- arg_combis[arg_combis$scenario == "soil-3m_irrig-10days" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$duration_string == "long" & arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$extreme_rain == "", ]
   #arg_combis <- arg_combis[arg_combis$treatment != "tracer" & arg_combis$retardation_scenario != "tracer" | arg_combis$treatment == "tracer" & arg_combis$retardation_scenario == "tracer", ]
   #arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario == "soil-1m_irrig-10days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$extreme_rain == "",]
   arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario != "soil-1m_irrig-01days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == TRUE & arg_combis$extreme_rain == "",]
-
 
   configs <- lapply(seq_len(nrow(arg_combis)), function(i) {
     as.list(arg_combis[i, ])
@@ -76,7 +95,7 @@ if (FALSE)
 }
 
 # provide_soil_columns ---------------------------------------------------------
-provide_soil_columns <- function(path)
+provide_soil_columns <- function(file)
 {
   `%>%` <- magrittr::`%>%`
 
@@ -86,7 +105,7 @@ provide_soil_columns <- function(path)
     round(rowMeans(x), digits = 2)
   }
 
-  kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
+  kwb.db::hsGetTable(file, "my_results2", stringsAsFactors = FALSE) %>%
     janitor::clean_names() %>%
     dplyr::mutate(half_life_days = dplyr::case_when(
       grepl(">", hwz_tage) ~ hwz_tage %>%
@@ -351,23 +370,24 @@ get_valid_exe_path <- function(exe_dir)
 }
 
 # provide_paths ----------------------------------------------------------------
-provide_paths <- function(config, start, end)
+provide_paths <- function(config = NULL, start = "", end = "")
 {
-  #Y:\WWT_Department\Projects\FlexTreat\Work-packages\AP3\3_1_4_Prognosemodell\Hydrus1D\irrig_fixed\irrig-period_status-quo\long_dry\retardation_no
-  tracer <- config$treatment == "tracer"
-  # Define a path grammar
+  #<ap3_1_4>\Hydrus1D\irrig_fixed\irrig-period_status-quo\long_dry\retardation_no
+
   PATH_GRAMMAR <- list(
-    exe_dir = sprintf("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<irrig_dir_string>/<duration_string><extreme_rain_string>/%s", config$retardation_scenario),
+    AP_3_1_4_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell",
+    AP_3_1_4_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell",
+    USER = Sys.getenv("USERNAME"),
+    file_soil_columns = "<AP_3_1_4>/StofflicheModellrandbedingungen.xlsx",
+    file_substance_classes = "inst/extdata/input-data/substance_classes.csv",
+    exe_dir = "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed/<irrig_dir_string>/<duration_string><extreme_rain_string>/<retardation_scenario>",
     model_name_org = "model_to_copy",
     model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>",
     ###model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
-    model_gui_path_org =  "<model_dir_org>/<model_name_org>.h1d",
-
+    model_gui_path_org = "<model_dir_org>/<model_name_org>.h1d",
     model_gui_path = "<exe_dir>/<model_name>.h1d",
     modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
-
     model_dir_org = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<model_name_org>",
-
     model_dir = "<exe_dir>/<model_name>",
     model_dir_vs = "<exe_dir>/<model_name>_vs",
     atmosphere = "<model_dir>/ATMOSPH.IN",
@@ -384,19 +404,20 @@ provide_paths <- function(config, start, end)
     solute_id = "1",
     solute = "<model_dir>/solute<solute_id>.out",
     solute_vs = "<model_dir_vs>/solute<solute_id>.out",
-    soil_data = "<extdata>/input-data/soil/soil_geolog.csv",
-    solute_id_start = sprintf("%02d", start),
-    solute_id_end = sprintf("%02d", end),
-    location = if (tracer) {
-      "tracer"
-    } else {
-      sprintf("ablauf_%s_median", config$treatment)
-    } #"ablauf_ka_median"
+    soil_data = "<extdata>/input-data/soil/soil_geolog.csv"
   )
+
+  if (is.null(config)) {
+    return(PATH_GRAMMAR)
+  }
+
+  tracer <- config$treatment == "tracer"
+  # Define a path grammar
 
   # Resolve the path grammar by replacing the placeholders recursively
   kwb.utils::resolve(
     PATH_GRAMMAR,
+    AP_3_1_4 = "AP_3_1_4_server",
     irrig_dir_string = ifelse(
       config$irrig_only_growing_season,
       "irrig-period_growing-season",
@@ -409,7 +430,16 @@ provide_paths <- function(config, start, end)
       ""
     },
     #final_subdir = ifelse(tracer, "tracer", config$retardation_scenario),
-    scenario = config$scenario
+    scenario = config$scenario,
+    retardation_scenario = config$retardation_scenario,
+    solute_id_start = sprintf("%02d", start),
+    solute_id_end = sprintf("%02d", end),
+    location = if (tracer) {
+      "tracer"
+    } else {
+      # e.g. "ablauf_ka_median"
+      sprintf("ablauf_%s_median", config$treatment)
+    }
   )
 }
 
