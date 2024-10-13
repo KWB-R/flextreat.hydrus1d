@@ -35,11 +35,10 @@ if (FALSE)
   paths <- kwb.utils::resolve(grammar, AP_3_1_4 = "AP_3_1_4_local")
 
   soil_columns <- provide_soil_columns(file = paths$file_soil_columns)
-
   selected_substances <- readr::read_csv(file = paths$file_substance_classes)
 
   ### Select 1 substance for 5 different half life classes defined in this table
-  soil_columns_selected <- soil_columns  %>%
+  soil_columns_selected <- soil_columns %>%
     dplyr::filter(substanz_nr %in% selected_substances$substance_id) %>%
     dplyr::mutate(id = 1:dplyr::n())
 
@@ -96,8 +95,7 @@ if (FALSE)
 # provide_paths ----------------------------------------------------------------
 provide_paths <- function(config = NULL, start = "", end = "")
 {
-  #<ap3_1_4>\Hydrus1D\irrig_fixed\irrig-period_status-quo\long_dry\retardation_no
-
+  # Define a path grammar
   PATH_GRAMMAR <- list(
     AP_3_1_4_server = "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell",
     AP_3_1_4_local = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell",
@@ -107,7 +105,7 @@ provide_paths <- function(config = NULL, start = "", end = "")
     exe_dir = "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed/<irrig_dir_string>/<duration_string><extreme_rain_string>/<retardation_scenario>",
     model_name_org = "model_to_copy",
     model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>",
-    ###model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
+    ### model_gui_path_org = "<exe_dir>/<model_name_org>.h1d",
     model_gui_path_org = "<model_dir_org>/<model_name_org>.h1d",
     model_gui_path = "<exe_dir>/<model_name>.h1d",
     modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
@@ -136,7 +134,6 @@ provide_paths <- function(config = NULL, start = "", end = "")
   }
 
   tracer <- config$treatment == "tracer"
-  # Define a path grammar
 
   # Resolve the path grammar by replacing the placeholders recursively
   kwb.utils::resolve(
@@ -153,15 +150,14 @@ provide_paths <- function(config = NULL, start = "", end = "")
     } else {
       ""
     },
-    #final_subdir = ifelse(tracer, "tracer", config$retardation_scenario),
     scenario = config$scenario,
     retardation_scenario = config$retardation_scenario,
     solute_id_start = sprintf("%02d", start),
     solute_id_end = sprintf("%02d", end),
+    # e.g. "ablauf_ka_median"
     location = if (tracer) {
       "tracer"
     } else {
-      # e.g. "ablauf_ka_median"
       sprintf("ablauf_%s_median", config$treatment)
     }
   )
@@ -244,192 +240,69 @@ get_atm <- function(atm, extreme_rain = NULL)
     dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
 }
 
-# prepare_solute_input ---------------------------------------------------------
-prepare_solute_input <- function(
-    dat,
-    selector,
-    Ks = NULL,
-    SnkL1 = NULL,
-    diff_w = 0,
-    diff_g = 0
+# extract_irrig_interval -------------------------------------------------------
+# Return the string that is used as "irrig_interval"
+extract_irrig_interval <- function(model_dir)
+{
+  string <- stringr::str_extract(model_dir, "[0-9][0-9]?days")
+  paste(
+    as.integer(stringr::str_extract(string, "\\d+")),
+    stringr::str_extract(string, "[a-z]+")
+  )
+}
+
+# copy_model_files -------------------------------------------------------------
+copy_model_files <- function(
+    from_model_dir,
+    to_model_dir,
+    from_model_file,
+    to_model_file,
+    overwrite = FALSE
 )
 {
-  `%>%` <- magrittr::`%>%`
-
-  # https://www3.epa.gov/ceampubl/learn2model/part-two/onsite/retard.html
-  kd <- function(porosity, retardation, bulk_density) {
-    (retardation - 1) * porosity / bulk_density
-  }
-
-  # https://chem.libretexts.org/Courses/Bellarmine_University/BU%3A_Chem_104_(Christianson)/Phase_2%3A_Understanding_Chemical_Reactions/4%3A_Kinetics%3A_How_Fast_Reactions_Go/4.5%3A_First_Order_Reaction_Half-Life#mjx-eqn-21.4.2
-  halftime_to_firstorderrate <- function(half_time) {
-    if (half_time != 0) {
-      0.693 / half_time
-    } else {
-      0
-    }
-  }
-
-  stopifnot(nrow(dat) <= 10)
-
-  if (selector$solute$No.Solutes != nrow(dat)) {
-    selector$solute$No.Solutes <- nrow(dat)
-  }
-
-  indices <- seq_len(nrow(dat))
-  solute_names <- sprintf("solute_%d", indices)
-  named_indices <- setNames(indices, solute_names)
-
-  cols <- c(
-    "Ks", "Nu", "Beta", "Henry", "SnkL1", "SnkS1", "SnkG1", "SnkL1'",
-    "SnkS1'", "SnkG1'", "SnkL0",  "SnkS0", "SnkG0",  "Alfa"
-  )
-
-  solutes_new <- lapply(named_indices, function(i) {
-
-    dat_sel <- dat[i,]
-
-    ks <- kd(
-      porosity = selector$waterflow$soil$ths - selector$waterflow$soil$thr,
-      retardation = dat_sel$retard,
-      bulk_density = selector$solute$transport$Bulk.d.
-    )
-
-    reaction <- matrix(data = 0, ncol = length(cols), nrow = length(ks)) %>%
-      as.data.frame() %>%
-      tibble::as_tibble()
-
-    names(reaction) <- cols
-    reaction$Beta <- 1
-
-    reaction$Ks <- if (is.null(Ks)) {
-      round(ks, 2)
-    } else {
-      Ks
-    }
-
-    reaction$SnkL1 <- if (is.null(SnkL1)) {
-      round(halftime_to_firstorderrate(dat_sel$half_life_days), 5)
-    } else {
-      SnkL1
-    }
-
-    list(
-      diffusion = tibble::tibble(DifW = diff_w, DifG = diff_g),
-      reaction = reaction
-    )
-
-  })
-
-  sel_tmp <- selector$solute[!names(selector$solute) %in% solute_names]
-  index_of <- function(name) which(names(sel_tmp) == name)
-
-  c(
-    selector[names(selector) != "solute"],
-    list(solute = c(
-      sel_tmp[1:index_of("transport")],
-      solutes_new,
-      sel_tmp[index_of("kTopSolute"):length(sel_tmp)]
-    ))
-  )
-}
-
-# generate_index_ranges --------------------------------------------------------
-generate_index_ranges <- function(n)
-{
-  ranges <- kwb.utils::startsToRanges(
-    starts = seq.int(from = 1L, to = n, by = 10L),
-    startOffset = 0L,
-    stopOffset = 1L,
-    lastStop = as.integer(n)
-  )
-
-  tibble::tibble(
-    start = ranges$from,
-    end = ranges$to
-  )
-}
-
-# prepare_files_for_irrig_int --------------------------------------------------
-prepare_files_for_irrig_int <- function(paths)
-{
-  `%>%` <- magrittr::`%>%`
-
-  p <- kwb.utils::createAccessor(paths)
-
-  copy <- function(fun, from, to) {
+  copy <- function(fun, from, to, ...) {
     kwb.utils::catAndRun(
       sprintf("Copying from\n  %s to\n  %s", from, to),
-      fun(path = from, new_path = to)
+      fun(path = from, new_path = to, ...)
     )
   }
 
-  if (!fs::dir_exists(p("model_dir"))) {
-    copy(fs::dir_copy, from = p("model_dir_org"), to = p("model_dir"))
+  if (!fs::dir_exists(to_model_dir) || overwrite) {
+    copy(fs::dir_copy, from_model_dir, to_model_dir, overwrite = overwrite)
   }
 
-  if (!fs::file_exists(p("model_gui_path"))) {
-    copy(fun = fs::file_copy, from = p("model_gui_path_org"), to = p("model_gui_path"))
+  if (!fs::file_exists(to_model_file) || overwrite) {
+    copy(fs::file_copy, from_model_file, to_model_file, overwrite = overwrite)
   }
-
-  model_out_files <- list.files(
-    p("model_dir"),
-    pattern = "\\.out$",
-    full.names = TRUE
-  )
-
-  if (length(model_out_files) > 0L) {
-    fs::file_delete(model_out_files)
-  }
-
-  soil_depth_cm <- 100 *
-    stringr::str_extract(p("model_name"), "soil-[0-9]+?m") %>%
-    stringr::str_extract("[0-9]") %>%
-    as.numeric()
-
-  if (soil_depth_cm != 200) {
-    soil_profile <- kwb.hydrus1d::read_profile(paths$profile)
-    profile_extended <- kwb.hydrus1d::extend_soil_profile(
-      soil_profile$profile,
-      x_end = -soil_depth_cm
-    )
-    soil_profile_extended <- soil_profile
-    soil_profile_extended$profile <- profile_extended
-    kwb.hydrus1d::write_profile(soil_profile_extended, path = p("profile"))
-  }
-
-  string_irrig_int <- stringr::str_extract(p("model_dir"), "[0-9][0-9]?days")
-
-  # Return the string that is used as "irrig_interval"
-  paste(
-    as.integer(stringr::str_extract(string_irrig_int, "\\d+")),
-    stringr::str_extract(string_irrig_int, "[a-z]+")
-  )
 }
 
-# sum_per_interval -------------------------------------------------------------
-sum_per_interval <- function(data, interval)
+# delete_model_output_files ----------------------------------------------------
+delete_model_output_files <- function(model_dir)
+{
+  files <- list.files(model_dir, pattern = "\\.out$", full.names = TRUE)
+
+  if (length(files) > 0L) {
+    fs::file_delete(files)
+  }
+}
+
+# get_soil_depth_cm ------------------------------------------------------------
+get_soil_depth_cm <- function(model_name)
 {
   `%>%` <- magrittr::`%>%`
+  100 *
+    stringr::str_extract(model_name, "soil-[0-9]+?m") %>%
+    # @mrustl: Why not "[0-9]+" ?
+    stringr::str_extract("[0-9]") %>%
+    as.numeric()
+}
 
-  data_org <- data
-  data <- dplyr::select(data, tidyselect::all_of(
-    c("date", "groundwater.mmPerDay", "clearwater.mmPerDay")
-  ))
-  cols_sum <- setdiff(names(data), "date")
-  data_summed <- data %>%
-    dplyr::mutate(
-      group = lubridate::floor_date(date, unit = interval)
-    ) %>%  # Konvertiere date in datetime-Format
-    dplyr::group_by(group) %>%  # Gruppiere nach Zeitintervallen
-    dplyr::summarise_at(
-      .vars = tidyselect::all_of(cols_sum),
-      .funs = sum
-    ) %>%   # Berechne die Summe für jedes Intervall
-    dplyr::rename(date = group)
-  data_org[, cols_sum] <- 0
-  data_org[data_org$date %in% data_summed$date, cols_sum] <- data_summed[, cols_sum]
-  data_org
+# update_soil_profile ----------------------------------------------------------
+update_soil_profile <- function(file, x_end)
+{
+  p <- kwb.hydrus1d::read_profile(file)
+  p$profile <- kwb.hydrus1d::extend_soil_profile(p$profile, x_end = x_end)
+  kwb.hydrus1d::write_profile(p, file)
 }
 
 # get_valid_exe_path -----------------------------------------------------------
@@ -447,50 +320,69 @@ inner_function <- function(config, atm_data, soil_columns, helper)
 {
   `%>%` <- magrittr::`%>%`
 
-  {
-    # Define constants
-    IRRIGATION_COLUMNS <- c("groundwater.mmPerDay", "clearwater.mmPerDay")
-
-    # Provide variables from config
-    extreme_rain <- if (config$extreme_rain == "") {
-      NULL
-    } else {
-      config$extreme_rain
-    }
-    tracer <- config$treatment == "tracer"
-    retardation <- config$retardation == "retardation_yes"
-
-    if (retardation) {
-      soil_columns$retard <- 1
-    }
-
-    atm <- helper("get_atm")(atm_data, extreme_rain)
-
-    if (config$irrig_only_growing_season) {
-      atm[which(!lubridate::month(atm$date) %in% 4:9), IRRIGATION_COLUMNS] <- 0
-    }
-
-    periods <- list(
-      test = c("2017-05-01", "2018-04-30"),
-      short = c("2017-05-01", "2020-04-30"),
-      long = c("2017-05-01", "2023-12-31")
-    )
-
-    period <- kwb.utils::selectElements(periods, config$duration_string)
-    atm <- dplyr::filter(atm, date >= period[1L] & date <= period[2L])
-
-    days_monthly <- lubridate::days_in_month(
-      seq.Date(from = min(atm$date), to = max(atm$date), by = "month")
-    )
-
-    loop_df <- helper("generate_index_ranges")(
-      n = if (tracer) {
-        length(days_monthly)
+  # Define helper function get_c_tops()
+  get_c_tops <- function(days_monthly, n) {
+    days_total <- cumsum(days_monthly)
+    indices <- seq_along(days_total)
+    dplyr::bind_cols(lapply(indices, function(i) {
+      x <- rep(0, n)
+      x_min <- ifelse(i == 1, 1, days_total[i - 1] + 1)
+      x[x_min:days_total[i]] <- rep(100, days_monthly[i])
+      tib <- data.frame(x)
+      colnames(tib) <- if (i == indices[1]) {
+        "cTop"
       } else {
-        nrow(soil_columns)
+        sprintf("cTop%d", which(indices == i))
       }
-    )
+      tib
+    }))
   }
+
+  # Provide variables from config
+  extreme_rain <- if (config$extreme_rain == "") {
+    NULL
+  } else {
+    config$extreme_rain
+  }
+
+  tracer <- config$treatment == "tracer"
+  retardation <- config$retardation == "retardation_yes"
+
+  if (retardation) {
+    soil_columns$retard <- 1
+  }
+
+  atm <- helper("get_atm")(atm_data, extreme_rain)
+
+  if (config$irrig_only_growing_season) {
+    atm <- reset_irrigation(atm, skip_months = 4:9)
+  }
+
+  periods <- list(
+    test = c("2017-05-01", "2018-04-30"),
+    short = c("2017-05-01", "2020-04-30"),
+    long = c("2017-05-01", "2023-12-31")
+  )
+
+  period <- kwb.utils::selectElements(periods, config$duration_string)
+  atm <- dplyr::filter(atm, date >= period[1L] & date <= period[2L])
+
+  days_monthly <- lubridate::days_in_month(
+    seq.Date(from = min(atm$date), to = max(atm$date), by = "month")
+  )
+
+  n <- if (tracer) {
+    length(days_monthly)
+  } else {
+    nrow(soil_columns)
+  }
+
+  loop_df <- kwb.utils::startsToRanges(
+    starts = seq.int(from = 1L, to = n, by = 10L),
+    startOffset = 0L,
+    stopOffset = 1L,
+    lastStop = as.integer(n)
+  )
 
   kwb.utils::catAndRun(
     messageText = sprintf(
@@ -502,106 +394,61 @@ inner_function <- function(config, atm_data, soil_columns, helper)
       sapply(seq_len(nrow(loop_df)), function(i) {
 
         #i <- 1L
-        {
-          paths <- helper("provide_paths")(
-            config,
-            start = loop_df$start[i],
-            end = loop_df$end[i]
+        solute_ids <- loop_df$from[i]:loop_df$to[i]
+
+        paths <- helper("provide_paths")(
+          config,
+          start = solute_ids[1L],
+          end = solute_ids[length(solute_ids)]
+        )
+
+        irrig_int <- stringr::str_detect(paths$model_dir, "irrig-[0-9][0-9]?days")
+        irrig_interval <- extract_irrig_interval(paths$model_dir)
+
+        if (irrig_int) {
+
+          # @mrustl: Why all these steps only in case of "irrig_int"?
+
+          copy_model_files(
+            from_model_dir = paths$model_dir_org,
+            to_model_dir = paths$model_dir,
+            from_model_file = paths$model_gui_path_org,
+            to_model_file = paths$model_gui_path
           )
 
-          solute_start_id <- as.numeric(paths$solute_id_start)
-          solute_end_id <- as.numeric(paths$solute_id_end)
-          n_solutes <- solute_end_id - (solute_start_id - 1)
+          delete_model_output_files(paths$model_dir)
 
-          no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
-          irrig_int <- stringr::str_detect(paths$model_dir, "irrig-[0-9][0-9]?days")
-        }
-
-        if (irrig_int) {
-          irrig_interval <- helper("prepare_files_for_irrig_int")(paths)
-        }
-
-        # no-irrigation
-        if (no_irrig) {
-          atm[, IRRIGATION_COLUMNS] <- 0
-        }
-
-        if (irrig_int) {
-          atm <- helper("sum_per_interval")(data = atm, interval = irrig_interval)
-        }
-
-        days_total <- cumsum(days_monthly)
-
-        indices <- seq_along(days_total)
-
-        c_tops <- lapply(indices, function(i) {
-
-          x <- rep(0, nrow(atm))
-          x_min <- ifelse(i == 1, 1, days_total[i - 1] + 1)
-          x[x_min:days_total[i]] <- rep(100, days_monthly[i])
-
-          tib <- data.frame(x)
-
-          colnames(tib) <- if (i == indices[1]) {
-            "cTop"
-          } else {
-            sprintf("cTop%d", which(indices %in% i))
+          if (depth <- get_soil_depth_cm(paths$model_name) != 200) {
+            update_soil_profile(file = paths$profile, x_end = -depth)
           }
 
-          tib
-        }) %>% dplyr::bind_cols()
-
-        c_tops_sel <- c_tops[, paths$solute_id_start:paths$solute_id_end]
-
-        atm_prep <- if (tracer) {
-          flextreat.hydrus1d::prepare_atmosphere(
-            atm = atm,
-            conc_irrig_clearwater = c_tops_sel,
-            conc_irrig_groundwater = c_tops_sel,
-            conc_rain = c_tops_sel
-          )
-        } else {
-          flextreat.hydrus1d::prepare_atmosphere(
-            atm = atm,
-            conc_irrig_clearwater = soil_columns[solute_start_id:solute_end_id, paths$location],
-            conc_irrig_groundwater = 0,
-            conc_rain = 0
-          )
         }
 
-        n_tsteps <- nrow(atm_prep)
-
-        writeLines(
-          kwb.hydrus1d::write_atmosphere(atm = atm_prep),
-          paths$atmosphere
+        # Prepare the model run by updating model files
+        update_atmosphere(
+          atm = atm,
+          no_irrig = stringr::str_detect(paths$model_dir, "no-irrig"),
+          irrig_int = irrig_int,
+          irrig_interval = irrig_interval,
+          tracer = tracer,
+          c_tops_tracer = get_c_tops(days_monthly, n = nrow(atm))[, solute_ids],
+          c_tops_no_tracer = soil_columns[solute_ids, paths$location],
+          file = paths$atmosphere
         )
 
-        selector <- kwb.hydrus1d::read_selector(path = paths$selector)
-
-        selector$time$tMax <- n_tsteps
-        selector$time$MPL <- 250
-
-        selector$time$TPrint <- seq(0, n_tsteps, n_tsteps/selector$time$MPL)
-
-        if (selector$time$TPrint[1] == 0) {
-          selector$time$TPrint[1] <- 1
-        }
-
-        solutes_new <- helper("prepare_solute_input")(
-          dat = soil_columns[solute_start_id:solute_end_id,],
-          Ks = if (tracer) 0, # else NULL
-          SnkL1 = if (tracer) 0, # else NULL
-          selector = selector,
-          diff_w = 0,
-          diff_g = 0
+        update_selector(
+          file = paths$selector,
+          n_tsteps = n_tsteps,
+          dat = soil_columns[solute_ids, ],
+          tracer = tracer
         )
 
-        kwb.hydrus1d::write_selector(solutes_new, paths$selector)
+        update_hydrus1d(
+          file = paths$hydrus1d,
+          n_solutes = length(solute_ids)
+        )
 
-        hydrus1d <- kwb.hydrus1d::read_hydrus1d(paths$hydrus1d)
-        hydrus1d$Main$NumberOfSolutes <- n_solutes
-        kwb.hydrus1d::write_hydrus1d(hydrus1d, paths$hydrus1d)
-
+        # Run the model
         exe_path <- helper("get_valid_exe_path")(paths$exe_dir)
 
         kwb.hydrus1d::run_model(
@@ -610,39 +457,35 @@ inner_function <- function(config, atm_data, soil_columns, helper)
           print_output = FALSE
         )
 
+        # Prepare next model run
         atmos <- kwb.hydrus1d::read_atmosph(paths$atmosphere)
-
-        #atmos$data[names(c_tops)] <- c_tops
-
-        atm_default <- atmos
-
         tlevel <- kwb.hydrus1d::read_tlevel(paths$t_level)
+
         max(tlevel$sum_infil)
         max(tlevel$sum_evap)
         sum(solute$difftime * as.numeric(solute$c_top) * as.numeric(tlevel$r_top))
 
-        vs_atm <- flextreat.hydrus1d::recalculate_ctop_with_virtualstorage(
-          atm = atm_default$data,
+        vs_atmos_data <- flextreat.hydrus1d::recalculate_ctop_with_virtualstorage(
+          atm = atmos$data,
           tlevel = tlevel,
           crit_v_top = - 0.05
         )
 
-        atmos$data[names(vs_atm$df)] <- vs_atm$df
+        atmos$data[names(vs_atmos_data)] <- vs_atmos_data
 
-        fs::dir_copy(paths$model_dir, paths$model_dir_vs, overwrite = TRUE)
-        fs::file_copy(paths$model_gui_path, paths$modelvs_gui_path, overwrite = TRUE)
-
-        model_vs_out_files <- list.files(paths$model_dir_vs, pattern = "\\.out$", full.names = TRUE)
-
-        if (length(model_vs_out_files) > 0) {
-          fs::file_delete(model_vs_out_files)
-        }
-
-        writeLines(
-          kwb.hydrus1d::write_atmosphere(atm = atmos$data),
-          paths$atmosphere_vs
+        copy_model_files(
+          from_model_dir = paths$model_dir,
+          to_model_dir = paths$model_dir_vs,
+          from_model_file = paths$model_gui_path,
+          to_model_file = paths$modelvs_gui_path,
+          overwrite = TRUE
         )
 
+        delete_model_output_files(paths$model_dir_vs)
+
+        write_atmosphere_file(atm = atmos$data, file = paths$atmosphere_vs)
+
+        # Run the model again
         kwb.hydrus1d::run_model(
           exe_path = exe_path,
           model_path = paths$model_dir_vs,
@@ -653,6 +496,183 @@ inner_function <- function(config, atm_data, soil_columns, helper)
     },
     dbg = TRUE
   )
+}
+
+# reset_irrigation -------------------------------------------------------------
+reset_irrigation <- function(atm, skip_months = integer())
+{
+  i <- if (length(skip_months) > 0L) {
+    which(!lubridate::month(atm$date) %in% skip_months)
+  } else {
+    seq_len(nrow(atm))
+  }
+  atm[i, c("groundwater.mmPerDay", "clearwater.mmPerDay")] <- 0
+  atm
+}
+
+# update_atmosphere ------------------------------------------------------------
+update_atmosphere <- function(
+    atm, no_irrig, irrig_int, irrig_interval,
+    tracer, c_tops_tracer, c_tops_no_tracer,
+    file
+)
+{
+  # Define helper function
+  sum_per_interval <- function(data, interval) {
+    `%>%` <- magrittr::`%>%`
+    columns <- c("groundwater.mmPerDay", "clearwater.mmPerDay")
+    data_summed <- data %>%
+      dplyr::select(tidyselect::all_of(c("date", columns)))
+    # Konvertiere date in datetime-Format
+    dplyr::mutate(group = lubridate::floor_date(date, unit = interval)) %>%
+      # Gruppiere nach Zeitintervallen
+      dplyr::group_by(group) %>%
+      # Berechne die Summe fuer jedes Intervall
+      dplyr::summarise_at(.vars = tidyselect::all_of(columns), .funs = sum) %>%
+      dplyr::rename(date = group)
+    data[, columns] <- 0
+    data[data$date %in% data_summed$date, columns] <- data_summed[, columns]
+    data
+  }
+
+  # no-irrigation
+  if (no_irrig) {
+    atm <- reset_irrigation(atm)
+  }
+
+  if (irrig_int) {
+    atm <- sum_per_interval(data = atm, interval = irrig_interval)
+  }
+
+  conc_default <- if (tracer) {
+    c_tops_tracer
+  } else {
+    0
+  }
+
+  atm_prep <- flextreat.hydrus1d::prepare_atmosphere(
+    atm = atm,
+    conc_irrig_clearwater = if (tracer) {
+      c_tops_tracer
+    } else {
+      c_tops_no_tracer
+    },
+    conc_irrig_groundwater = conc_default,
+    conc_rain = conc_default
+  )
+
+  n_tsteps <- nrow(atm_prep)
+
+  write_atmosphere_file(atm = atm_prep, file)
+}
+
+# write_atmosphere_file --------------------------------------------------------
+write_atmosphere_file <- function(atm, file)
+{
+  writeLines(kwb.hydrus1d::write_atmosphere(atm), file)
+}
+
+# update_selector --------------------------------------------------------------
+update_selector <- function(file, n_tsteps, dat, tracer)
+{
+  # Define helper functions
+
+  # https://www3.epa.gov/ceampubl/learn2model/part-two/onsite/retard.html
+  kd <- function(porosity, retardation, bulk_density) {
+    (retardation - 1) * porosity / bulk_density
+  }
+
+  # https://chem.libretexts.org/Courses/Bellarmine_University/BU%3A_Chem_104_(Christianson)/Phase_2%3A_Understanding_Chemical_Reactions/4%3A_Kinetics%3A_How_Fast_Reactions_Go/4.5%3A_First_Order_Reaction_Half-Life#mjx-eqn-21.4.2
+  halftime_to_firstorderrate <- function(half_time) {
+    if (half_time != 0) {
+      0.693 / half_time
+    } else {
+      0
+    }
+  }
+
+  prepare_solute_input <- function(
+    dat, selector, Ks = NULL, SnkL1 = NULL, diff_w = 0, diff_g = 0
+  ) {
+    `%>%` <- magrittr::`%>%`
+    stopifnot(nrow(dat) <= 10)
+    if (selector$solute$No.Solutes != nrow(dat)) {
+      selector$solute$No.Solutes <- nrow(dat)
+    }
+    indices <- seq_len(nrow(dat))
+    solute_names <- sprintf("solute_%d", indices)
+    named_indices <- setNames(indices, solute_names)
+    cols <- c(
+      "Ks", "Nu", "Beta", "Henry", "SnkL1", "SnkS1", "SnkG1", "SnkL1'",
+      "SnkS1'", "SnkG1'", "SnkL0",  "SnkS0", "SnkG0",  "Alfa"
+    )
+    solutes_new <- lapply(named_indices, function(i) {
+      dat_sel <- dat[i,]
+      ks <- kd(
+        porosity = selector$waterflow$soil$ths - selector$waterflow$soil$thr,
+        retardation = dat_sel$retard,
+        bulk_density = selector$solute$transport$Bulk.d.
+      )
+      reaction <- matrix(data = 0, ncol = length(cols), nrow = length(ks)) %>%
+        as.data.frame() %>%
+        tibble::as_tibble()
+      names(reaction) <- cols
+      reaction$Beta <- 1
+      reaction$Ks <- if (is.null(Ks)) {
+        round(ks, 2)
+      } else {
+        Ks
+      }
+      reaction$SnkL1 <- if (is.null(SnkL1)) {
+        round(halftime_to_firstorderrate(dat_sel$half_life_days), 5)
+      } else {
+        SnkL1
+      }
+      list(
+        diffusion = tibble::tibble(DifW = diff_w, DifG = diff_g),
+        reaction = reaction
+      )
+    })
+    sel_tmp <- selector$solute[!names(selector$solute) %in% solute_names]
+    index_of <- function(name) which(names(sel_tmp) == name)
+    c(
+      selector[names(selector) != "solute"],
+      list(solute = c(
+        sel_tmp[1:index_of("transport")],
+        solutes_new,
+        sel_tmp[index_of("kTopSolute"):length(sel_tmp)]
+      ))
+    )
+  }
+
+  selector <- kwb.hydrus1d::read_selector(path = file)
+
+  selector$time$tMax <- n_tsteps
+  selector$time$MPL <- 250
+  selector$time$TPrint <- seq(0, n_tsteps, n_tsteps/selector$time$MPL)
+
+  if (selector$time$TPrint[1] == 0) {
+    selector$time$TPrint[1] <- 1
+  }
+
+  solutes_new <- prepare_solute_input(
+    dat = dat,
+    Ks = if (tracer) 0, # else NULL
+    SnkL1 = if (tracer) 0, # else NULL
+    selector = selector,
+    diff_w = 0,
+    diff_g = 0
+  )
+
+  kwb.hydrus1d::write_selector(solutes_new, file)
+}
+
+# update_hydrus1d --------------------------------------------------------------
+update_hydrus1d <- function(file, n_solutes)
+{
+  h <- kwb.hydrus1d::read_hydrus1d(file)
+  h$Main$NumberOfSolutes <- n_solutes
+  kwb.hydrus1d::write_hydrus1d(h, file)
 }
 
 # helper -----------------------------------------------------------------------
