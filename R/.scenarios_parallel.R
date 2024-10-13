@@ -35,42 +35,19 @@ get_atm <- function(atm, extreme_rain = NULL)
       evapo_p_mean_mm = sum(evapo_p_mean_mm, na.rm = TRUE)
     )
 
-  if (extreme_rain == "dry") {
+  atm_dry_wet <- atm_stats %>%
+    dplyr::filter(rain_mm == (if (extreme_rain == "dry") min else max)(rain_mm))
 
-    atm_dry <- atm_stats %>%
-      dplyr::filter(rain_mm == min(rain_mm))
+  atm_dry_wet_sel <- atm %>%
+    dplyr::filter(year == atm_dry_wet$year) %>%
+    dplyr::select(day_of_year, rain_mm)
 
-    atm_dry_sel <- atm %>%
-      dplyr::filter(year == atm_dry$year) %>%
-      dplyr::select(day_of_year, rain_mm)
-
-    atm_dry_input <- atm %>%
-      dplyr::select(- rain_mm, - hydrologic_year, - year) %>%
-      dplyr::left_join(atm_dry_sel) %>%
-      dplyr::mutate(rain_mm = dplyr::if_else(is.na(rain_mm), 0, rain_mm)) %>%
-      dplyr::select(- day_of_year) %>%
-      dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
-
-    return(atm_dry_input)
-  }
-
-  if (extreme_rain == "wet") {
-    atm_wet <- atm_stats %>%
-      dplyr::filter(rain_mm == max(rain_mm))
-
-    atm_wet_sel <- atm %>%
-      dplyr::filter(year == atm_wet$year) %>%
-      dplyr::select(day_of_year, rain_mm)
-
-    atm_wet_input <- atm %>%
-      dplyr::select(- rain_mm, - hydrologic_year, - year) %>%
-      dplyr::left_join(atm_wet_sel) %>%
-      dplyr::mutate(rain_mm = dplyr::if_else(is.na(rain_mm), 0, rain_mm)) %>%
-      dplyr::select(- day_of_year) %>%
-      dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
-
-    return(atm_wet_input)
-  }
+  atm %>%
+    dplyr::select(- rain_mm, - hydrologic_year, - year) %>%
+    dplyr::left_join(atm_dry_wet_sel) %>%
+    dplyr::mutate(rain_mm = dplyr::if_else(is.na(rain_mm), 0, rain_mm)) %>%
+    dplyr::select(- day_of_year) %>%
+    dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
 }
 
 # prepare_solute_input ---------------------------------------------------------
@@ -817,8 +794,6 @@ if (FALSE)
 # Rest -------------------------------------------------------------------------
 if (FALSE)
 {
-  paths$model_dir_vs
-
   #scenarios_solutes <- paste0(scenarios, "_soil-column")
   scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
 
@@ -826,7 +801,7 @@ if (FALSE)
   root_path <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
 
   scenario_dirs <- fs::dir_ls(
-    path =   root_path,
+    path = root_path,
     recurse = TRUE,
     regexp = "retardation.*vs$",
     type = "directory"
