@@ -8,6 +8,33 @@ if (FALSE) {
 library(magrittr)
 library(flextreat.hydrus1d)
 
+# MAIN -------------------------------------------------------------------------
+if (FALSE)
+{
+  #path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_2_Boden-Grundwasser/daten_karten/Sickerwasserprognose/column-studies/Stoffeigenschaften_Säulen.xlsx"
+  path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/StofflicheModellrandbedingungen.xlsx"
+
+  soil_columns <- provide_soil_columns(path)
+
+  ### Select 1 substance for 5 different half life classes defined in this table
+  selected_substances <- readr::read_csv("inst/extdata/input-data/substance_classes.csv")
+
+  soil_columns_selected <- soil_columns  %>%
+    dplyr::filter(substanz_nr %in% selected_substances$substance_id) %>%
+    dplyr::mutate(id = 1:dplyr::n())
+
+  arg_combis <- kwb.utils::expandGrid(
+    extreme_rain = c("", "wet", "dry"), # "" needs to be treated as NULL!
+    treatment = c("tracer", "ka", "o3"), # "tracer" # c("ka", "o3")
+    scenario = unlist(lapply(c(1,10), function(x) {
+      paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))
+    })),
+    irrig_only_growing_season = c(TRUE, FALSE),
+    duration_string = "long", #c("short", "long"),
+    retardation_scenario = c("retardation_yes", "retardation_no", "tracer")
+  )
+}
+
 # get_atm ----------------------------------------------------------------------
 get_atm <- function(atm, extreme_rain = NULL)
 {
@@ -174,32 +201,6 @@ provide_soil_columns <- function(path)
     dplyr::mutate(id = 1:dplyr::n()) %>%
     dplyr::relocate(id) # %>% dplyr::mutate(retard = 1, half_life_days = 0)
 }
-
-# MAIN -------------------------------------------------------------------------
-
-#path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_2_Boden-Grundwasser/daten_karten/Sickerwasserprognose/column-studies/Stoffeigenschaften_Säulen.xlsx"
-path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/StofflicheModellrandbedingungen.xlsx"
-
-soil_columns <- provide_soil_columns(path)
-
-### Select 1 substance for 5 different half life classes defined in this table
-selected_substances <- readr::read_csv("inst/extdata/input-data/substance_classes.csv")
-
-soil_columns_selected <- soil_columns  %>%
-  dplyr::filter(substanz_nr %in% selected_substances$substance_id) %>%
-  dplyr::mutate(id = 1:dplyr::n())
-
-arg_combis <- kwb.utils::expandGrid(
-  extreme_rain = c("", "wet", "dry"), # "" needs to be treated as NULL!
-  treatment = c("tracer", "ka", "o3"), # "tracer" # c("ka", "o3")
-  scenario = unlist(lapply(c(1,10), function(x) {
-    paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))
-  })),
-  irrig_only_growing_season = c(TRUE, FALSE),
-  duration_string = "long", #c("short", "long"),
-  retardation_scenario = c("retardation_yes", "retardation_no", "tracer")
-)
-
 
 # generate_solute_ids ----------------------------------------------------------
 generate_solute_ids <- function(n)
