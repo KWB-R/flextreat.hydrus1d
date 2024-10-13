@@ -435,11 +435,11 @@ sum_per_interval <- function(data, interval)
 # get_valid_exe_path -----------------------------------------------------------
 get_valid_exe_path <- function(exe_dir)
 {
-  if (file.exists(file.path(exe_dir, "H1D_CALC.exe"))) {
-    file.path(exe_dir, "H1D_CALC.exe")
-  } else {
-    kwb.hydrus1d::check_hydrus_exe()
+  if (file.exists(file <- file.path(exe_dir, "H1D_CALC.exe"))) {
+    return(file)
   }
+
+  kwb.hydrus1d::check_hydrus_exe()
 }
 
 # inner_function ---------------------------------------------------------------
