@@ -35,6 +35,41 @@ if (FALSE)
   )
 }
 
+# provide_soil_columns ---------------------------------------------------------
+provide_soil_columns <- function(path)
+{
+  `%>%` <- magrittr::`%>%`
+
+  get_mean <- function(col) {
+    x <- stringr::str_split_fixed(col, "-", n = 2)
+    mode(x) <- "numeric"
+    round(rowMeans(x), digits = 2)
+  }
+
+  kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
+    janitor::clean_names() %>%
+    dplyr::mutate(half_life_days = dplyr::case_when(
+      grepl(">", hwz_tage) ~ hwz_tage %>%
+        stringr::str_remove(">") %>%
+        as.numeric() %>%
+        round(digits = 2),
+      grepl("<", hwz_tage) ~ hwz_tage %>%
+        stringr::str_remove("<") %>%
+        as.numeric() %>%
+        round(digits = 2),
+      grepl("-", hwz_tage) ~ get_mean(hwz_tage),
+      .default = as.numeric(hwz_tage) %>%
+        round(digits = 2)),
+      retard = dplyr::case_when(
+        grepl("-", retardation) ~ get_mean(retardation),
+        is.na(retardation) ~ 1L,
+        .default = as.numeric(retardation) %>%
+          round(digits = 2))) %>%
+    dplyr::filter(!is.na(half_life_days)) %>%
+    dplyr::mutate(id = 1:dplyr::n()) %>%
+    dplyr::relocate(id) # %>% dplyr::mutate(retard = 1, half_life_days = 0)
+}
+
 # get_atm ----------------------------------------------------------------------
 get_atm <- function(atm, extreme_rain = NULL)
 {
@@ -165,41 +200,6 @@ prepare_solute_input <- function(
       sel_tmp[index_of("kTopSolute"):length(sel_tmp)]
     ))
   )
-}
-
-# provide_soil_columns ---------------------------------------------------------
-provide_soil_columns <- function(path)
-{
-  `%>%` <- magrittr::`%>%`
-
-  get_mean <- function(col) {
-    x <- stringr::str_split_fixed(col, "-", n = 2)
-    mode(x) <- "numeric"
-    round(rowMeans(x), digits = 2)
-  }
-
-  kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
-    janitor::clean_names() %>%
-    dplyr::mutate(half_life_days = dplyr::case_when(
-      grepl(">", hwz_tage) ~ hwz_tage %>%
-        stringr::str_remove(">") %>%
-        as.numeric() %>%
-        round(digits = 2),
-      grepl("<", hwz_tage) ~ hwz_tage %>%
-        stringr::str_remove("<") %>%
-        as.numeric() %>%
-        round(digits = 2),
-      grepl("-", hwz_tage) ~ get_mean(hwz_tage),
-      .default = as.numeric(hwz_tage) %>%
-        round(digits = 2)),
-      retard = dplyr::case_when(
-        grepl("-", retardation) ~ get_mean(retardation),
-        is.na(retardation) ~ 1L,
-        .default = as.numeric(retardation) %>%
-          round(digits = 2))) %>%
-    dplyr::filter(!is.na(half_life_days)) %>%
-    dplyr::mutate(id = 1:dplyr::n()) %>%
-    dplyr::relocate(id) # %>% dplyr::mutate(retard = 1, half_life_days = 0)
 }
 
 # generate_solute_ids ----------------------------------------------------------
