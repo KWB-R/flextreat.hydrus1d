@@ -128,16 +128,15 @@ prepare_solute_input <- function(
   })
 
   sel_tmp <- selector$solute[!names(selector$solute) %in% solute_names]
-
-  solutes_new_list <- c(
-    sel_tmp[1:which(names(sel_tmp) == "transport")],
-    solutes_new,
-    sel_tmp[which(names(sel_tmp) == "kTopSolute"):length(sel_tmp)]
-  )
+  index_of <- function(name) which(names(sel_tmp) == name)
 
   c(
     selector[names(selector) != "solute"],
-    list(solute = solutes_new_list)
+    list(solute = c(
+      sel_tmp[1:index_of("transport")],
+      solutes_new,
+      sel_tmp[index_of("kTopSolute"):length(sel_tmp)]
+    ))
   )
 }
 
