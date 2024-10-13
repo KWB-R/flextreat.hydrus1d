@@ -202,8 +202,8 @@ prepare_solute_input <- function(
   )
 }
 
-# generate_solute_ids ----------------------------------------------------------
-generate_solute_ids <- function(n)
+# generate_index_ranges --------------------------------------------------------
+generate_index_ranges <- function(n)
 {
   ranges <- kwb.utils::startsToRanges(
     starts = seq.int(from = 1L, to = n, by = 10L),
@@ -215,19 +215,6 @@ generate_solute_ids <- function(n)
   tibble::tibble(
     start = ranges$from,
     end = ranges$to
-  )
-}
-
-# generate_periods -------------------------------------------------------------
-generate_periods <- function(n)
-{
-  tibble::tibble(
-    start = seq(1, n, 10),
-    end = if (n %% 10 != 0) {
-      c(seq(10, n, 10), n)
-    } else {
-      seq(10, n, 10)
-    }
   )
 }
 
@@ -427,11 +414,13 @@ inner_function <- function(config, atm_data, soil_columns, helper)
       seq.Date(from = min(atm$date), to = max(atm$date), by = "month")
     )
 
-    loop_df <- if (tracer) {
-      helper("generate_periods")(n = length(days_monthly))
-    } else {
-      helper("generate_solute_ids")(n = nrow(soil_columns))
-    }
+    loop_df <- helper("generate_index_ranges")(
+      n = if (tracer) {
+        length(days_monthly)
+      } else {
+        nrow(soil_columns)
+      }
+    )
   }
 
   kwb.utils::catAndRun(
@@ -600,13 +589,12 @@ inner_function <- function(config, atm_data, soil_columns, helper)
 # helper -----------------------------------------------------------------------
 helper <- kwb.utils::createAccessor(list(
   get_atm = get_atm,
-  generate_solute_ids = generate_solute_ids,
+  generate_index_ranges = generate_index_ranges,
   provide_paths = provide_paths,
   prepare_files_for_irrig_int = prepare_files_for_irrig_int,
   sum_per_interval = sum_per_interval,
   prepare_solute_input = prepare_solute_input,
-  get_valid_exe_path = get_valid_exe_path,
-  generate_periods = generate_periods
+  get_valid_exe_path = get_valid_exe_path
 ))
 
 # Main loop --------------------------------------------------------------------
