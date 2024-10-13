@@ -56,12 +56,18 @@ prepare_solute_input <- function(
     selector,
     Ks = NULL,
     SnkL1 = NULL,
-    diff_w = 0, diff_g = 0,
-    kd = NULL,
+    diff_w = 0,
+    diff_g = 0,
     halftime_to_firstorderrate = NULL
 )
 {
   `%>%` <- magrittr::`%>%`
+
+  # helper function to calculate kd
+  # https://www3.epa.gov/ceampubl/learn2model/part-two/onsite/retard.html
+  kd <- function(porosity, retardation, bulk_density) {
+    (retardation - 1) * porosity / bulk_density
+  }
 
   stopifnot(nrow(dat) <= 10)
 
@@ -69,9 +75,16 @@ prepare_solute_input <- function(
     selector$solute$No.Solutes <- nrow(dat)
   }
 
-  solute_names <- sprintf("solute_%d", seq_len(nrow(dat)))
+  indices <- seq_len(nrow(dat))
+  solute_names <- sprintf("solute_%d", indices)
+  named_indices <- setNames(indices, solute_names)
 
-  solutes_new <- setNames(nm = solute_names, lapply(seq_len(nrow(dat)), function(i) {
+  cols <- c(
+    "Ks", "Nu", "Beta", "Henry", "SnkL1", "SnkS1", "SnkG1", "SnkL1'",
+    "SnkS1'", "SnkG1'", "SnkL0",  "SnkS0", "SnkG0",  "Alfa"
+  )
+
+  solutes_new <- lapply(named_indices, function(i) {
 
     dat_sel <- dat[i,]
 
@@ -79,11 +92,6 @@ prepare_solute_input <- function(
       porosity = selector$waterflow$soil$ths - selector$waterflow$soil$thr,
       retardation = dat_sel$retard,
       bulk_density = selector$solute$transport$Bulk.d.
-    )
-
-    cols <- c(
-      "Ks", "Nu", "Beta", "Henry", "SnkL1", "SnkS1", "SnkG1", "SnkL1'",
-      "SnkS1'", "SnkG1'", "SnkL0",  "SnkS0", "SnkG0",  "Alfa"
     )
 
     reaction <- matrix(data = 0, ncol = length(cols), nrow = length(ks)) %>%
@@ -110,7 +118,7 @@ prepare_solute_input <- function(
       reaction = reaction
     )
 
-  }))
+  })
 
   sel_tmp <- selector$solute[!names(selector$solute) %in% solute_names]
 
@@ -132,13 +140,6 @@ get_mean <- function(col)
   x <- stringr::str_split_fixed(col, "-", n = 2)
   mode(x) <- "numeric"
   round(rowMeans(x), digits = 2)
-}
-
-# kd ---------------------------------------------------------------------------
-kd <- function(porosity, retardation, bulk_density)
-{
-  #https://www3.epa.gov/ceampubl/learn2model/part-two/onsite/retard.html
-  (retardation - 1) * porosity / bulk_density
 }
 
 # halftime_to_firstorderrate ---------------------------------------------------
@@ -545,7 +546,6 @@ inner_function <- function(config, atm_data, soil_columns, helper)
           selector = selector,
           diff_w = 0,
           diff_g = 0,
-          kd = helper("kd"),
           halftime_to_firstorderrate = helper("halftime_to_firstorderrate")
         )
 
@@ -618,8 +618,7 @@ helper <- kwb.utils::createAccessor(list(
   prepare_solute_input = prepare_solute_input,
   halftime_to_firstorderrate = halftime_to_firstorderrate,
   get_valid_exe_path = get_valid_exe_path,
-  generate_periods = generate_periods,
-  kd = kd
+  generate_periods = generate_periods
 ))
 
 # Main loop --------------------------------------------------------------------
