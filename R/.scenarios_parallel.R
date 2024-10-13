@@ -57,8 +57,7 @@ prepare_solute_input <- function(
     Ks = NULL,
     SnkL1 = NULL,
     diff_w = 0,
-    diff_g = 0,
-    halftime_to_firstorderrate = NULL
+    diff_g = 0
 )
 {
   `%>%` <- magrittr::`%>%`
@@ -66,6 +65,15 @@ prepare_solute_input <- function(
   # https://www3.epa.gov/ceampubl/learn2model/part-two/onsite/retard.html
   kd <- function(porosity, retardation, bulk_density) {
     (retardation - 1) * porosity / bulk_density
+  }
+
+  # https://chem.libretexts.org/Courses/Bellarmine_University/BU%3A_Chem_104_(Christianson)/Phase_2%3A_Understanding_Chemical_Reactions/4%3A_Kinetics%3A_How_Fast_Reactions_Go/4.5%3A_First_Order_Reaction_Half-Life#mjx-eqn-21.4.2
+  halftime_to_firstorderrate <- function(half_time) {
+    if (half_time != 0) {
+      0.693 / half_time
+    } else {
+      0
+    }
   }
 
   stopifnot(nrow(dat) <= 10)
@@ -131,17 +139,6 @@ prepare_solute_input <- function(
     selector[names(selector) != "solute"],
     list(solute = solutes_new_list)
   )
-}
-
-# halftime_to_firstorderrate ---------------------------------------------------
-halftime_to_firstorderrate <- function(half_time)
-{
-  if(half_time != 0) {
-    #https://chem.libretexts.org/Courses/Bellarmine_University/BU%3A_Chem_104_(Christianson)/Phase_2%3A_Understanding_Chemical_Reactions/4%3A_Kinetics%3A_How_Fast_Reactions_Go/4.5%3A_First_Order_Reaction_Half-Life#mjx-eqn-21.4.2
-    0.693 / half_time
-  } else {
-    0
-  }
 }
 
 # provide_soil_columns ---------------------------------------------------------
@@ -542,8 +539,7 @@ inner_function <- function(config, atm_data, soil_columns, helper)
           SnkL1 = if (tracer) 0, # else NULL
           selector = selector,
           diff_w = 0,
-          diff_g = 0,
-          halftime_to_firstorderrate = helper("halftime_to_firstorderrate")
+          diff_g = 0
         )
 
         kwb.hydrus1d::write_selector(solutes_new, paths$selector)
@@ -613,7 +609,6 @@ helper <- kwb.utils::createAccessor(list(
   prepare_files_for_irrig_int = prepare_files_for_irrig_int,
   sum_per_interval = sum_per_interval,
   prepare_solute_input = prepare_solute_input,
-  halftime_to_firstorderrate = halftime_to_firstorderrate,
   get_valid_exe_path = get_valid_exe_path,
   generate_periods = generate_periods
 ))
