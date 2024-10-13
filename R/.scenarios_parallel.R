@@ -24,7 +24,6 @@ if (FALSE)
   paths_local <- kwb.utils::resolve(grammar, AP_3_1_4 = "AP_3_1_4_local")
 
   file.copy(paths_server$file_soil_columns, paths_local$file_soil_columns)
-  paths$file_substance_classes
 }
 
 # MAIN -------------------------------------------------------------------------
@@ -112,7 +111,7 @@ provide_paths <- function(config = NULL, start = "", end = "")
     model_gui_path_org = "<model_dir_org>/<model_name_org>.h1d",
     model_gui_path = "<exe_dir>/<model_name>.h1d",
     modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
-    model_dir_org = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/<model_name_org>",
+    model_dir_org = "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed/<model_name_org>",
     model_dir = "<exe_dir>/<model_name>",
     model_dir_vs = "<exe_dir>/<model_name>_vs",
     atmosphere = "<model_dir>/ATMOSPH.IN",
@@ -685,7 +684,7 @@ if (FALSE)
   plot_solute(solute)
   (1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop)) * 100
 
-  paths$solute_vs2 <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/H1D/1a2a_tracer_vs/solute2.out"
+  paths$solute_vs2 <- "<AP_3_1_4>/Vivian/Rohdaten/H1D/1a2a_tracer_vs/solute2.out"
   solute <- read_solute_with_difftime(paths$solute)
   (1 - max(solute$sum_cv_top)/sum(atmos$data$Prec*atmos$data$cTop2)) * 100
 
@@ -798,7 +797,7 @@ if (FALSE)
   scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
 
   #root_path <- "D:/hydrus1d/irrig_fixed_01"
-  root_path <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
+  root_path <- "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed"
 
   scenario_dirs <- fs::dir_ls(
     path = root_path,
@@ -901,7 +900,7 @@ if (FALSE)
   )
 
   # load_default <- res_stats$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx`
-  name <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/irrig-period_status-quo/long/retardation_no/ablauf_o3_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx"
+  name <- "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed/irrig-period_status-quo/long/retardation_no/ablauf_o3_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx"
   load_default <- res_stats[[name]] %>%
     # dplyr::mutate(
     #   retardation = basename(dirname(dirname(path))),
@@ -931,7 +930,7 @@ if (FALSE)
   View(res_stats_df)
 
   #root_path <- "D:/hydrus1d/irrig_fixed_01"
-  root_path <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
+  root_path <- "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed"
 
   model_paths <- fs::dir_ls(
     path = root_path,
@@ -1284,7 +1283,7 @@ if (FALSE)
 if (FALSE)
 {
   atm_files <- fs::dir_ls(
-    path = "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed",
+    path = "<AP_3_1_4>/Vivian/Rohdaten/irrig_fixed",
     recurse = TRUE,
     type = "file",
     regexp = "tracer.*ATMOSPH.IN"
