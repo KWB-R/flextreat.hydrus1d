@@ -33,6 +33,46 @@ if (FALSE)
     duration_string = "long", #c("short", "long"),
     retardation_scenario = c("retardation_yes", "retardation_no", "tracer")
   )
+
+  atm_data <- flextreat.hydrus1d::prepare_atmosphere_data()
+
+
+  #arg_combis <- arg_combis[arg_combis$scenario == "soil-3m_irrig-10days" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$duration_string == "long" & arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$extreme_rain == "", ]
+  #arg_combis <- arg_combis[arg_combis$treatment != "tracer" & arg_combis$retardation_scenario != "tracer" | arg_combis$treatment == "tracer" & arg_combis$retardation_scenario == "tracer", ]
+  #arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario == "soil-1m_irrig-10days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$extreme_rain == "",]
+  arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario != "soil-1m_irrig-01days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == TRUE & arg_combis$extreme_rain == "",]
+
+
+  configs <- lapply(seq_len(nrow(arg_combis)), function(i) {
+    as.list(arg_combis[i, ])
+  })
+
+  # Sequential loop
+  for (config in configs) {
+    #config <- configs[[1L]]
+    inner_function(
+      config = config,
+      atm_data = atm_data,
+      soil_columns = soil_columns_selected,
+      helper = helper
+    )
+  }
+
+  # Parallel loop
+  ncores <- parallel::detectCores()
+  ncores <- 8
+  cl <- parallel::makeCluster(ncores)
+
+  parallel::parLapply(
+    cl = cl,
+    X = configs,
+    fun = inner_function,
+    atm_data = atm_data,
+    soil_columns = soil_columns_selected,
+    helper = helper
+  )
+
+  parallel::stopCluster(cl)
 }
 
 # provide_soil_columns ---------------------------------------------------------
@@ -596,51 +636,6 @@ helper <- kwb.utils::createAccessor(list(
   prepare_solute_input = prepare_solute_input,
   get_valid_exe_path = get_valid_exe_path
 ))
-
-# Main loop --------------------------------------------------------------------
-
-if (FALSE) {
-
-  atm_data <- flextreat.hydrus1d::prepare_atmosphere_data()
-
-
-  #arg_combis <- arg_combis[arg_combis$scenario == "soil-3m_irrig-10days" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$duration_string == "long" & arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$extreme_rain == "", ]
-  #arg_combis <- arg_combis[arg_combis$treatment != "tracer" & arg_combis$retardation_scenario != "tracer" | arg_combis$treatment == "tracer" & arg_combis$retardation_scenario == "tracer", ]
-  #arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario == "soil-1m_irrig-10days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$extreme_rain == "",]
-  arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario != "soil-1m_irrig-01days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == TRUE & arg_combis$extreme_rain == "",]
-
-
-  configs <- lapply(seq_len(nrow(arg_combis)), function(i) {
-    as.list(arg_combis[i, ])
-  })
-
-  # Sequential loop
-  for (config in configs) {
-    #config <- configs[[1L]]
-    inner_function(
-      config = config,
-      atm_data = atm_data,
-      soil_columns = soil_columns_selected,
-      helper = helper
-    )
-  }
-
-  # Parallel loop
-  ncores <- parallel::detectCores()
-  ncores <- 8
-  cl <- parallel::makeCluster(ncores)
-
-  parallel::parLapply(
-    cl = cl,
-    X = configs,
-    fun = inner_function,
-    atm_data = atm_data,
-    soil_columns = soil_columns_selected,
-    helper = helper
-  )
-
-  parallel::stopCluster(cl)
-}
 
 # Read and plot solute ---------------------------------------------------------
 if (FALSE)
