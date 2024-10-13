@@ -217,10 +217,26 @@ generate_solute_ids <- function(n)
     seq_end <- c(seq_end, n)
   }
 
-  tibble::tibble(
+  result <- tibble::tibble(
     start = as.integer(seq_start),
     end = as.integer(seq_end)
   )
+
+  ranges <- kwb.utils::startsToRanges(
+    starts = seq.int(from = 1L, to = n, by = 10L),
+    startOffset = 0L,
+    stopOffset = 1L,
+    lastStop = as.integer(n)
+  )
+
+  result_2 <- tibble::tibble(
+    start = ranges$from,
+    end = ranges$to
+  )
+
+  stopifnot(identical(result, result_2))
+
+  result_2
 }
 
 # generate_periods -------------------------------------------------------------
