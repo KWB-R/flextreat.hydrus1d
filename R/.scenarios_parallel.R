@@ -648,11 +648,37 @@ if (FALSE) {
   atm_data <- flextreat.hydrus1d::prepare_atmosphere_data()
 
 
+  dirs <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed",
+                     recurse = TRUE,
+                     regexp = "retardation_no",
+                     type = "directory")
+
+  dirinfo <- fs::dir_info(path = dirs, type = "directory")
+
+  dirinfo <- dirinfo[dirinfo$change_time < as.POSIXct("2024-10-14"),]
+
+  mod_scens <- dirinfo$path %>%
+    stringr::str_remove("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/") %>%
+    stringr::str_split_fixed("/", 4) %>% as.data.frame()
+
+  names(mod_scens) <- c("irrig_only_growing_season", "duration_string_extreme_rain", "retardation_scenario", "treatment_scenario")
+
+  mod_scens <- mod_scens %>%
+    tidyr::separate(duration_string_extreme_rain, c("duration_string", "extreme_rain"), sep = "_") %>%
+    dplyr::mutate(extreme_rain = dplyr::if_else(is.na(extreme_rain), "", extreme_rain),
+                  irrig_only_growing_season = dplyr::if_else(irrig_only_growing_season == "irrig-period_growing-season",
+                                                               TRUE,
+                                                               FALSE),
+                  treatment = stringr::str_extract(treatment_scenario, "ka|o3"),
+                  scenario = treatment_scenario %>%  stringr::str_remove(".*_median_") %>%
+                    stringr::str_remove("_soil.*"))
+
   #arg_combis <- arg_combis[arg_combis$scenario == "soil-3m_irrig-10days" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$duration_string == "long" & arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$extreme_rain == "", ]
   #arg_combis <- arg_combis[arg_combis$treatment != "tracer" & arg_combis$retardation_scenario != "tracer" | arg_combis$treatment == "tracer" & arg_combis$retardation_scenario == "tracer", ]
   #arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario == "soil-1m_irrig-10days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == FALSE & arg_combis$extreme_rain == "",]
-  arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario != "soil-1m_irrig-01days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == TRUE & arg_combis$extreme_rain == "",]
-
+  #arg_combis <- arg_combis[arg_combis$retardation_scenario == "tracer" & arg_combis$treatment == "tracer" & arg_combis$scenario != "soil-1m_irrig-01days" & arg_combis$duration_string == "long" & arg_combis$irrig_only_growing_season == TRUE & arg_combis$extreme_rain == "",]
+  #arg_combis <- arg_combis[arg_combis$retardation_scenario == "retardation_no" & arg_combis$treatment  %in% c("ka", "o3"),]
+  arg_combis <- mod_scens
 
   configs <- lapply(seq_len(nrow(arg_combis)), function(i) {
     as.list(arg_combis[i, ])
@@ -826,9 +852,9 @@ if (FALSE)
 
   # Set up parallel plan
   system.time(expr = {
-    future::plan(future::multisession)
+    # future::plan(future::multisession)
 
-    future.apply::future_sapply(scenario_dirs, function(scenario_dir) {
+    sapply(scenario_dirs, function(scenario_dir) {
 
       solutes_list <- setNames(lapply(scenarios_solutes, function(scenario) {
         solute_files <- fs::dir_ls(scenario_dir,
@@ -912,9 +938,39 @@ if (FALSE)
     dplyr::left_join(load_default, by = c("substanz_nr", "substanz_name")) %>%
     dplyr::mutate(percental_load_gw = dplyr::if_else(abs(default_sum_cv_bot) < 10000 | abs(sum_cv_bot) < 10000,
                                                      NA_real_,
-                                                     100 + 100 * (abs(sum_cv_bot) - abs(default_sum_cv_bot)) /  abs(default_sum_cv_bot)))
+                                                     100 + 100 * (abs(sum_cv_bot) - abs(default_sum_cv_bot)) /  abs(default_sum_cv_bot))) %>%
+    tidyr::separate(col = scen, into = c("treatment", "soil_depth_irrig"), sep = "n_s") %>%
+    dplyr::mutate(treatment = sprintf("%sn", treatment),
+                  soil_depth_irrig = sprintf("s%s", soil_depth_irrig)) %>%
+    tidyr::separate(col = soil_depth_irrig, into = c("soil_depth", "irrigation_intervall"), sep = "_", remove = FALSE) %>%
+    dplyr::mutate(duration_irrigperiod = paste0(duration, "_", irrigation_period))
+
 
   View(res_stats_df)
+
+  duration_irrigperiods <- unique(res_stats_df$duration_irrigperiod)
+  duration_irrigper <-   duration_irrigperiods[1]
+
+  res_stats_df_sel <- res_stats_df %>%
+  dplyr::filter(duration_irrigperiod == duration_irrigper)
+
+  res_stats_df_sel %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = soil_depth_irrig,
+                                         y = percental_load_gw,
+                                         col = substanz_name#,
+                                         #col = treatment
+                                         )) +
+  ggplot2::geom_point() +
+  ggplot2::geom_jitter() +
+  ggplot2::labs(y = "Percental Load to Groundwater compared to Status Quo (%)", x = "Scenario",
+                  title = sprintf("Scenario: %s %s (%s)",
+                                  res_stats_df_sel$irrigation_period[1],
+                                  res_stats_df_sel$duration[1],
+                                  res_stats_df_sel$retardation[1]),
+                  col = "Substance Name") +
+    ggplot2::scale_y_log10() +
+    ggplot2::theme_bw() +
+    ggplot2::theme(leaxis.text.x =  ggplot2::element_text(angle = 90, vjust = 0.5, hjust=1))
 
 
 
