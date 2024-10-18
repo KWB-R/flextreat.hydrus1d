@@ -435,9 +435,9 @@ inner_function <- function(config, atm_data, soil_columns, helper)
       config$extreme_rain
     }
     tracer <- config$treatment == "tracer"
-    retardation <- config$retardation == "retardation_yes"
+    no_retardation <- config$retardation == "retardation_no"
 
-    if (retardation) {
+    if (no_retardation) {
       soil_columns$retard <- 1
     }
 
@@ -651,12 +651,12 @@ if (FALSE) {
 
   dirs <- fs::dir_ls("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed",
                      recurse = TRUE,
-                     regexp = "retardation_no",
+                     regexp = "retardation_yes",
                      type = "directory")
 
   dirinfo <- fs::dir_info(path = dirs, type = "directory")
 
-  dirinfo <- dirinfo[dirinfo$change_time < as.POSIXct("2024-10-14"),]
+  dirinfo <- dirinfo[dirinfo$change_time <  as.POSIXct("2024-10-17 14:30:00"),]
 
   mod_scens <- dirinfo$path %>%
     stringr::str_remove("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/") %>%
@@ -689,6 +689,27 @@ if (FALSE) {
     irrig_only_growing_season = c(TRUE, FALSE),
     duration_string = "long", #c("short", "long"),
     retardation_scenario = "retardation_no")
+
+  arg_combis <- kwb.utils::expandGrid(
+    extreme_rain = c(""), # "" needs to be treated as NULL!
+    treatment = c("ka"), # "tracer" # c("ka", "o3")
+    scenario = unlist(lapply(1, function(x) {
+      paste0("soil-", 1, sprintf("m_irrig-%02ddays", x))
+    })),
+    irrig_only_growing_season = c(FALSE),
+    duration_string = "long", #c("short", "long"),
+    retardation_scenario = "retardation_no")
+
+  arg_combis <- kwb.utils::expandGrid(
+    extreme_rain = c("", "wet", "dry"), # "" needs to be treated as NULL!
+    treatment = c("ka", "o3"), # "tracer" # c("ka", "o3")
+    scenario = unlist(lapply(c(1,10), function(x) {
+      paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))
+    })),
+    irrig_only_growing_season = c(TRUE, FALSE),
+    duration_string = "long", #c("short", "long"),
+    retardation_scenario = "retardation_yes")
+
 
   configs <- lapply(seq_len(nrow(arg_combis)), function(i) {
     as.list(arg_combis[i, ])
@@ -857,7 +878,9 @@ if (FALSE)
   scenario_dirs <- fs::dir_ls(
     path =   root_path,
     recurse = TRUE,
-    regexp = "irrig-period_growing-season/long/retardation_no/.*vs$",
+    #regexp = "retardation_no.*vs$",
+    regexp = "irrig-period_status-quo/long/retardation_no.*vs$",
+    #regexp = "irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-1m_irrig-01days_soil-column_0105.*vs$",
     type = "directory"
   )
 
@@ -914,15 +937,24 @@ if (FALSE)
     future::plan(future::sequential)
   })
 
+  retardation_short <- "retardation_yes"
+
+  soil_columns_plot <- if(retardation_short == "retardation_yes") {
+    soil_columns_selected
+  } else {
+    soil_columns_selected %>%
+      dplyr::mutate(retard = 1)
+  }
+
   scenario_dirs <- fs::dir_ls(
     path =   root_path,
     recurse = TRUE,
     #regexp = "irrig-period_growing-season/long/retardation_no/.*vs/hydrus_scenarios.xlsx$",
-    regexp = "retardation_no.*vs/hydrus_scenarios.xlsx$",
+    regexp = sprintf("%s.*vs/hydrus_scenarios.xlsx$", retardation_short),
     type = "file"
   )
 
-  fs::file_info(scenario_dirs) %>% View()
+  #fs::file_info(scenario_dirs) %>% View()
 
 
   res_stats <- lapply(
@@ -933,7 +965,8 @@ if (FALSE)
   )
 
  # load_default <- res_stats$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx`
-  load_default <- res_stats$`C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx` %>%
+  load_default <- res_stats[[sprintf("C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed/irrig-period_status-quo/long/%s/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx",
+                                     retardation_short)]] %>%
     # dplyr::mutate(retardation = basename(dirname(dirname(path))),
     #               duration = basename(dirname(dirname(dirname(path)))),
     #               irrigation_period = basename(dirname(dirname(dirname(dirname((path))))))) %>%
@@ -960,36 +993,123 @@ if (FALSE)
     tidyr::separate(col = soil_depth_irrig, into = c("soil_depth", "irrigation_intervall"), sep = "_", remove = FALSE) %>%
     dplyr::mutate(duration_irrigperiod = paste0(duration, "_", irrigation_period))
 
+  de <- TRUE
 
-  View(res_stats_df)
+
+  if(de) {
+  res_stats_df$duration_irrigperiod <- res_stats_df$duration_irrigperiod %>%
+      stringr::str_replace("long_wet", "DWD, trocken (2013: 380 mm/a)") %>%
+      stringr::str_replace("long_dry", "DWD, nass    (2023: 835 mm/a)") %>%
+      stringr::str_replace("long", "DWD   (2017-2023: 611 mm/a)") %>%
+      stringr::str_replace("_irrig-period_status-quo", ", Bewässerung: ganzjährig") %>%
+      stringr::str_replace("_irrig-period_growing-season", ", Bewässerung: nur Vegetationsperiode (Apr-Sep)")
+
+    res_stats_df$soil_depth_irrig <- res_stats_df$soil_depth_irrig %>%
+      stringr::str_replace("soil-", "Boden ") %>%
+      stringr::str_replace("_irrig-10days", ", Bewässerung: zehntägig") %>%
+      stringr::str_replace("_irrig-01days", ", Bewässerung: täglich")
+  lang_id <- "de"
+  lab_x <- "Bodenm\u00E4chtigkeit und Bew\u00E4sserungsintervall"
+  lab_y <- "Prozentuale Fracht ins Grundwasser i.V. zu Status Quo (%)"
+  title <- "Stoff: %s (Halbwertszeit: %3.1f Tage, Retardation: %2.1f)"
+  legend_col <- "Klima- und Bew\u00E4sserungsszenario "
+  legend_shape <- "Aufbereitung"
+  treatment_wwtp <- "Kl\u00E4ranlagenablauf   (Median: "
+  treatment_o3 <- "Ozonanlagenablauf (Median: "
+  treatment_unit <- "ng/l"
 
 
-  duration_irrigperiods <- unique(res_stats_df$duration_irrigperiod)
-  duration_irrigper <-   duration_irrigperiods[1]
+  } else {
+    lang_id <- "en"
+    lab_x <- "Scenario"
+    lab_y <- "Percental Load to Groundwater compared to Status Quo (%)"
+    title <- "Substance: %s (half life time: %3.1f days, retardation: %2.1f)"
+    legend_col <- "Scenario"
+    legend_shape <- "Treatment"
+    treatment_wwtp <- "WWTP effluent (median: "
+    treatment_o3 <- "Ozone effluent (median: "
+    treatment_unit <- "ng/l"
+  }
 
-  pdff <- "percental-load-to-groundwater_per-scenario.pdf"
-  kwb.utils::preparePdf(pdff)
+  #View(res_stats_df)
 
-  sapply(duration_irrigperiods, function(duration_irrigper) {
+
+  substances <- unique(res_stats_df$substanz_name)[order(unique(res_stats_df$substanz_name))]
+
+
+  pdff <- sprintf("percental-load-to-groundwater_per-substance_%s_%s.pdf",
+                  stringr::str_replace(retardation_short, "_", "-"),
+                  lang_id)
+  kwb.utils::preparePdf(pdff, borderHeight.cm = 0,  borderWidth.cm = 0, width.cm = 32.67, height.cm = 23.1)
+
+  sapply(substances, function(substance) {
+
+   substance_meta  <- soil_columns_plot[soil_columns_plot$substanz_name == substance,]
 
     res_stats_df_sel <-  res_stats_df %>%
-      dplyr::filter(duration_irrigperiod == duration_irrigper)
+      dplyr::filter(substanz_name == substance)
+
+    res_stats_df_sel$treatment_conc <- ""
+
+    res_stats_df_sel$treatment_conc[which(res_stats_df_sel$treatment == "ablauf_ka_median")] <- sprintf("%s %5d %s)", treatment_wwtp, round(substance_meta$ablauf_ka_median, 0),   treatment_unit)
+    res_stats_df_sel$treatment_conc[which(res_stats_df_sel$treatment == "ablauf_o3_median")] <- sprintf("%s %5d %s)", treatment_o3, round(substance_meta$ablauf_o3_median, 0),   treatment_unit)
 
   gg <- res_stats_df_sel %>%
-      ggplot2::ggplot(mapping = ggplot2::aes(x = soil_depth_irrig,
+    ggplot2::ggplot(mapping = ggplot2::aes(x = soil_depth_irrig,
                                          y = percental_load_gw,
-                                         col = substanz_name,
-                                         shape = treatment
+                                         col = duration_irrigperiod,
+                                         shape = treatment_conc
                                          #col = treatment
                                          )) +
-  ggplot2::geom_point(size = 3) +
-  ggplot2::labs(y = "Percental Load to Groundwater compared to Status Quo (%)", x = "Scenario",
+  #ggplot2::geom_point(size = 3) +
+  ggplot2::geom_jitter(width = 0.15, size = 3, alpha = 0.5) +
+  #ggplot2::scale_y_log10(limits = c(1,1000)) +
+  ggplot2::ylim(c(0,200)) +
+    ggplot2::labs(y = lab_y, x = lab_x,
+                  title = sprintf(title,
+                                  substance_meta$substanz_name,
+                                  substance_meta$half_life_days,
+                                  substance_meta$retard),
+                  col = legend_col,
+                  shape = legend_shape) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "bottom",
+                   legend.direction = "vertical",
+                   legend.margin= ggplot2::margin(),
+                   axis.text.x =  ggplot2::element_text(angle = 90, vjust = 0.5, hjust=1)#,
+                   #axis.title.y = ggplot2::element_text(vjust = -10, margin = ggplot2::margin(t = 0, r = 0, b = 100, l = 0))
+                   )
+  print(gg)
+})
+
+kwb.utils::finishAndShowPdf(pdff)
+
+
+pdff <- sprintf("percental-load-to-groundwater_per-scenario_%s.pdf",
+                sprintf(retardation_short, "_", "-"))
+
+kwb.utils::preparePdf(pdff)
+
+sapply(duration_irrigperiods, function(duration_irrigper) {
+
+  res_stats_df_sel <-  res_stats_df %>%
+    dplyr::filter(duration_irrigperiod == duration_irrigper)
+
+  gg <- res_stats_df_sel %>%
+    ggplot2::ggplot(mapping = ggplot2::aes(x = soil_depth_irrig,
+                                           y = percental_load_gw,
+                                           col = substanz_name,
+                                           shape = treatment
+                                           #col = treatment
+    )) +
+    ggplot2::geom_point(size = 3) +
+    ggplot2::labs(y = "Percental Load to Groundwater compared to Status Quo (%)", x = "Scenario",
                   title = sprintf("Scenario: %s %s (%s)",
                                   res_stats_df_sel$irrigation_period[1],
                                   res_stats_df_sel$duration[1],
                                   res_stats_df_sel$retardation[1]),
                   col = "Substance Name") +
-    ggplot2::scale_y_log10() +
+    #ggplot2::scale_y_log10(limits = c(0,200)) +
     ggplot2::ylim(c(0,200)) +
     ggplot2::theme_bw() +
     ggplot2::theme(legend.position = "top",
