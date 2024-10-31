@@ -1008,27 +1008,58 @@ if (FALSE)
       stringr::str_replace("soil-", "Boden ") %>%
       stringr::str_replace("_irrig-10days", ", Bewässerung: zehntägig") %>%
       stringr::str_replace("_irrig-01days", ", Bewässerung: täglich")
+
+    ci_scenarios <- unique(res_stats_df$duration_irrigperiod)[order(unique(res_stats_df$duration_irrigperiod))]
+    si_scenarios <- unique(res_stats_df$soil_depth_irrig)[order(unique(res_stats_df$soil_depth_irrig))]
+
+    res_stats_df <- res_stats_df %>%
+      dplyr::left_join(tibble::tibble(soil_depth_irrig = si_scenarios,
+                   soil_depth_irrig_scenarios = sprintf("B%01dB%01d",
+                                                        stringr::str_extract(si_scenarios, "[0-9]") %>% as.integer(),
+                                                        ifelse(stringr::str_detect(si_scenarios, "zehn"),
+                                                               0, 1))
+                   )) %>%
+      dplyr::left_join(tibble::tibble(duration_irrigperiod = ci_scenarios,
+                                      duration_irrigperiod_scenarios = sprintf("K%01dB%01d",
+                                                                           dplyr::case_when(stringr::str_detect(ci_scenarios, "DWD ") ~ 0,
+                                                                                            stringr::str_detect(ci_scenarios, "DWD, nass") ~ 1,
+                                                                                            stringr::str_detect(ci_scenarios, "DWD, trocken") ~ 2),
+                                                                           ifelse(stringr::str_detect(ci_scenarios, "ganz"), 0, 1)))
+      )
+
   lang_id <- "de"
   lab_x <- "Bodenm\u00E4chtigkeit und Bew\u00E4sserungsintervall"
-  lab_y <- "Prozentuale Fracht ins Grundwasser i.V. zu Status Quo (%)"
-  title <- "Stoff: %s (Halbwertszeit: %3.1f Tage, Retardation: %2.1f)"
+  lab_y <- "Prozentuale Frachtins Grundwasserim Vergleich zu Status Quo (%)"
+  title <- "Stoff: %s"
+  subtitle <- "Halbwertszeit: %3.1f Tage, Retardation: %2.1f"
   legend_col <- "Klima- und Bew\u00E4sserungsszenario "
   legend_shape <- "Aufbereitung"
-  treatment_wwtp <- "Kl\u00E4ranlagenablauf   (Median: "
-  treatment_o3 <- "Ozonanlagenablauf (Median: "
+  treatment_wwtp <- "Kl\u00E4ranlagenablauf   (Median:"
+  treatment_o3 <- "Ozonanlagenablauf (Median:"
   treatment_unit <- "ng/l"
 
 
   } else {
     lang_id <- "en"
     lab_x <- "Scenario"
-    lab_y <- "Percental Load to Groundwater compared to Status Quo (%)"
-    title <- "Substance: %s (half life time: %3.1f days, retardation: %2.1f)"
+    lab_y <- "Percental Load to Groundwater\ncompared to Status Quo (%)"
+    title <- "Substance: %s"
+    subtitle <- "half life time: %3.1f days, retardation: %2.1f"
     legend_col <- "Scenario"
     legend_shape <- "Treatment"
     treatment_wwtp <- "WWTP effluent (median: "
     treatment_o3 <- "Ozone effluent (median: "
     treatment_unit <- "ng/l"
+
+    si_scenarios <- unique(res_stats_df$soil_depth_irrig)[order(unique(res_stats_df$soil_depth_irrig))]
+
+    res_stats_df <- res_stats_df %>%
+      dplyr::left_join(tibble::tibble(soil_depth_irrig = si_scenarios,
+                                      soil_depth_irrig_scenarios = sprintf("S%01dI%01d",
+                                                                           stringr::str_extract(si_scenarios, "[0-9]") %>% as.integer(),
+                                                                           ifelse(stringr::str_detect(si_scenarios, "ten"),
+                                                                                  0, 1)))
+      )
   }
 
   #View(res_stats_df)
@@ -1040,7 +1071,9 @@ if (FALSE)
   pdff <- sprintf("percental-load-to-groundwater_per-substance_%s_%s.pdf",
                   stringr::str_replace(retardation_short, "_", "-"),
                   lang_id)
-  kwb.utils::preparePdf(pdff, borderHeight.cm = 0,  borderWidth.cm = 0, width.cm = 32.67, height.cm = 23.1)
+  #kwb.utils::preparePdf(pdff, borderHeight.cm = 0,  borderWidth.cm = 0, width.cm = 32.67, height.cm = 23.1)
+  kwb.utils::preparePdf(pdff)
+
 
   sapply(substances, function(substance) {
 
@@ -1054,31 +1087,36 @@ if (FALSE)
     res_stats_df_sel$treatment_conc[which(res_stats_df_sel$treatment == "ablauf_ka_median")] <- sprintf("%s %5d %s)", treatment_wwtp, round(substance_meta$ablauf_ka_median, 0),   treatment_unit)
     res_stats_df_sel$treatment_conc[which(res_stats_df_sel$treatment == "ablauf_o3_median")] <- sprintf("%s %5d %s)", treatment_o3, round(substance_meta$ablauf_o3_median, 0),   treatment_unit)
 
-  gg <- res_stats_df_sel %>%
-    ggplot2::ggplot(mapping = ggplot2::aes(x = soil_depth_irrig,
-                                         y = percental_load_gw,
-                                         col = duration_irrigperiod,
-                                         shape = treatment_conc
-                                         #col = treatment
-                                         )) +
-  #ggplot2::geom_point(size = 3) +
-  ggplot2::geom_jitter(width = 0.15, size = 3, alpha = 0.5) +
-  #ggplot2::scale_y_log10(limits = c(1,1000)) +
-  ggplot2::ylim(c(0,200)) +
-    ggplot2::labs(y = lab_y, x = lab_x,
-                  title = sprintf(title,
-                                  substance_meta$substanz_name,
-                                  substance_meta$half_life_days,
-                                  substance_meta$retard),
-                  col = legend_col,
-                  shape = legend_shape) +
-    ggplot2::theme_bw() +
-    ggplot2::theme(legend.position = "bottom",
-                   legend.direction = "vertical",
-                   legend.margin= ggplot2::margin(),
-                   axis.text.x =  ggplot2::element_text(angle = 90, vjust = 0.5, hjust=1)#,
-                   #axis.title.y = ggplot2::element_text(vjust = -10, margin = ggplot2::margin(t = 0, r = 0, b = 100, l = 0))
-                   )
+    gg <- res_stats_df_sel %>%
+      ggplot2::ggplot(mapping = ggplot2::aes(x = soil_depth_irrig_scenarios,
+                                             y = percental_load_gw,
+                                             col = duration_irrigperiod_scenarios,
+                                             shape = treatment_conc)) +
+      ggplot2::geom_jitter(width = 0.15, size = 3, alpha = 0.5) +
+      ggplot2::scale_y_continuous(limits = c(0, 200), labels = scales::percent_format(scale = 1)) +
+      ggplot2::labs(y = lab_y, x = lab_x,
+                    title = sprintf(title, substance_meta$substanz_name),
+                    subtitle = sprintf(subtitle,
+                                       substance_meta$half_life_days,
+                                       substance_meta$retard),
+                    col = legend_col,
+                    shape = legend_shape) +
+      ggplot2::theme_bw() +
+      ggplot2::theme(legend.position=c(0.83,0.85),
+                     legend.box.just = "left",
+                     legend.direction = "vertical",
+                     legend.margin = ggplot2::margin(),
+                     legend.text = ggplot2::element_text(size = 12),# face = "bold"),  # Größer und dick
+                     legend.title = ggplot2::element_text(size = 14, face = "bold"),
+                     axis.text.x = ggplot2::element_text(size = 12, face = "bold"),
+                     axis.text.y = ggplot2::element_text(size = 12, face = "bold"),  # Größer und dick
+                     axis.title.x = ggplot2::element_text(size = 14, face = "bold"),  # Größer und dick
+                     axis.title.y = ggplot2::element_text(size = 14, face = "bold"),
+                     plot.title = ggplot2::element_text(size = 16, face = "bold")#,   # Größer und dick
+                     #plot.subtitle = ggplot2::element_text(size = 14, face = "bold")
+                     ) +
+      ggplot2::guides(color = ggplot2::guide_legend(nrow = 2, byrow = FALSE))
+
   print(gg)
 })
 
@@ -1103,7 +1141,8 @@ sapply(duration_irrigperiods, function(duration_irrigper) {
                                            #col = treatment
     )) +
     ggplot2::geom_point(size = 3) +
-    ggplot2::labs(y = "Percental Load to Groundwater compared to Status Quo (%)", x = "Scenario",
+    ggplot2::labs(x = "Scenario",
+                  y = "Percental Load to Groundwater compared to Status Quo (%)",
                   title = sprintf("Scenario: %s %s (%s)",
                                   res_stats_df_sel$irrigation_period[1],
                                   res_stats_df_sel$duration[1],
