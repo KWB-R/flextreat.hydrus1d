@@ -1014,28 +1014,28 @@ if (FALSE)
 
     res_stats_df <- res_stats_df %>%
       dplyr::left_join(tibble::tibble(soil_depth_irrig = si_scenarios,
-                   soil_depth_irrig_scenarios = sprintf("B%01dB%01d",
+                   soil_depth_irrig_scenarios = sprintf("Bo%01dBi%02d",
                                                         stringr::str_extract(si_scenarios, "[0-9]") %>% as.integer(),
                                                         ifelse(stringr::str_detect(si_scenarios, "zehn"),
-                                                               0, 1))
+                                                               10, 1))
                    )) %>%
       dplyr::left_join(tibble::tibble(duration_irrigperiod = ci_scenarios,
-                                      duration_irrigperiod_scenarios = sprintf("K%01dB%01d",
-                                                                           dplyr::case_when(stringr::str_detect(ci_scenarios, "DWD ") ~ 0,
-                                                                                            stringr::str_detect(ci_scenarios, "DWD, nass") ~ 1,
-                                                                                            stringr::str_detect(ci_scenarios, "DWD, trocken") ~ 2),
-                                                                           ifelse(stringr::str_detect(ci_scenarios, "ganz"), 0, 1)))
+                                      duration_irrigperiod_scenarios = sprintf("N%03dB%03d",
+                                                                           stringr::str_extract(ci_scenarios, " ([0-9]+) ") %>% as.integer(),
+                                                                           ifelse(stringr::str_detect(ci_scenarios, "ganz"),
+                                                                                  405,
+                                                                                  289)))
       )
 
   lang_id <- "de"
-  lab_x <- "Bodenm\u00E4chtigkeit und Bew\u00E4sserungsintervall"
-  lab_y <- "Prozentuale Frachtins Grundwasserim Vergleich zu Status Quo (%)"
+  lab_x <- "Bodenm\u00E4chtigkeit (m) und Bew\u00E4sserungsintervall (Tage)"
+  lab_y <- "Prozentuale Fracht ins Grundwasser im Vergleich zu Status Quo (%)"
   title <- "Stoff: %s"
   subtitle <- "Halbwertszeit: %3.1f Tage, Retardation: %2.1f"
-  legend_col <- "Klima- und Bew\u00E4sserungsszenario "
-  legend_shape <- "Aufbereitung"
-  treatment_wwtp <- "Kl\u00E4ranlagenablauf   (Median:"
-  treatment_o3 <- "Ozonanlagenablauf (Median:"
+  legend_col <- "Niederschlag und Bew\u00E4sserung (mm/Jahr)"
+  legend_shape <- "Technische Aufbereitung"
+  treatment_wwtp <- "Konventionell (Median:"
+  treatment_o3 <-   "UV-Ozon       (Median:"
   treatment_unit <- "ng/l"
 
 
@@ -1102,7 +1102,7 @@ if (FALSE)
                     col = legend_col,
                     shape = legend_shape) +
       ggplot2::theme_bw() +
-      ggplot2::theme(legend.position=c(0.83,0.85),
+      ggplot2::theme(legend.position=c(0.80,0.85),
                      legend.box.just = "left",
                      legend.direction = "vertical",
                      legend.margin = ggplot2::margin(),
