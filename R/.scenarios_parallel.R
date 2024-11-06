@@ -1067,6 +1067,53 @@ if (FALSE)
 
   substances <- unique(res_stats_df$substanz_name)[order(unique(res_stats_df$substanz_name))]
 
+  substance <- substances[1]
+
+  jpeg(filename = "cardensartan.jpeg", height = 500, width = 1200, quality = 100)
+  substance_meta  <- soil_columns_plot[soil_columns_plot$substanz_name == substance,]
+
+  res_stats_df_sel <-  res_stats_df %>%
+    dplyr::filter(substanz_name == substance)
+
+  res_stats_df_sel$treatment_conc <- ""
+
+  res_stats_df_sel$treatment_conc[which(res_stats_df_sel$treatment == "ablauf_ka_median")] <- sprintf("%s %5d %s)", treatment_wwtp, round(substance_meta$ablauf_ka_median, 0),   treatment_unit)
+  res_stats_df_sel$treatment_conc[which(res_stats_df_sel$treatment == "ablauf_o3_median")] <- sprintf("%s %5d %s)", treatment_o3, round(substance_meta$ablauf_o3_median, 0),   treatment_unit)
+
+  gg <- res_stats_df_sel %>%
+    ggplot2::ggplot(mapping = ggplot2::aes(x = soil_depth_irrig_scenarios,
+                                           y = percental_load_gw,
+                                           col = duration_irrigperiod_scenarios,
+                                           shape = treatment_conc)) +
+    ggplot2::geom_jitter(width = 0.15, size = 3, alpha = 0.5) +
+    ggplot2::scale_y_continuous(limits = c(0, 200), labels = scales::percent_format(scale = 1)) +
+    ggplot2::labs(y = lab_y, x = lab_x,
+                  title = sprintf(title, substance_meta$substanz_name),
+                  subtitle = sprintf(subtitle,
+                                     substance_meta$half_life_days,
+                                     substance_meta$retard),
+                  col = legend_col,
+                  shape = legend_shape) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position=c(0.85,0.85),
+                   legend.box.just = "left",
+                   legend.direction = "vertical",
+                   legend.margin = ggplot2::margin(),
+                   legend.text = ggplot2::element_text(size = 14),# face = "bold"),  # Größer und dick
+                   legend.title = ggplot2::element_text(size = 15, face = "bold"),
+                   axis.text.x = ggplot2::element_text(size = 14, face = "bold"),
+                   axis.text.y = ggplot2::element_text(size = 14, face = "bold"),  # Größer und dick
+                   axis.title.x = ggplot2::element_text(size = 15, face = "bold"),  # Größer und dick
+                   axis.title.y = ggplot2::element_text(size = 15, face = "bold"),
+                   plot.title = ggplot2::element_text(size = 17, face = "bold"),
+                   plot.subtitle = ggplot2::element_text(size = 15) #,   # Größer und dick
+                   #plot.subtitle = ggplot2::element_text(size = 14, face = "bold")
+    ) +
+    ggplot2::guides(color = ggplot2::guide_legend(nrow = 2, byrow = FALSE))
+
+  print(gg)
+  dev.off()
+
 
   pdff <- sprintf("percental-load-to-groundwater_per-substance_%s_%s.pdf",
                   stringr::str_replace(retardation_short, "_", "-"),
