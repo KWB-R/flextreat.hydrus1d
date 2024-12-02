@@ -1240,6 +1240,8 @@ kwb.utils::finishAndShowPdf(pdff)
     }))
   }))
 
+
+
   ### read traveltimes in parallel
   library(future.apply)
 
@@ -1269,10 +1271,12 @@ kwb.utils::finishAndShowPdf(pdff)
 
   sapply(seq_along(traveltimes_list), function(i) {
 
+    label <- sprintf("%s", extrahiere_letzte_drei_teile(names(traveltimes_list)[i]))
+
     htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_list[[i]] %>% dplyr::bind_rows(),
-                                                                 title = sprintf("%s", extrahiere_letzte_drei_teile(names(traveltimes_list)[i])),
+                                                                 title = label ,
                                                                  ylim = c(0,650)),
-                            file = sprintf("traveltimes_%s.html", names(traveltimes_list)[i]))
+                            file = sprintf("traveltimes_%s.html", label))
   })
 
 
@@ -1397,22 +1401,34 @@ kwb.utils::finishAndShowPdf(pdff)
       file = "traveltimes_all.html"
     )
 
-    pdff <- "traveltimes_all_percent.pdf"
-    kwb.utils::preparePdf(pdff)
+    jpeg(filename = "verweilzeiten.jpeg", height = 500, width = 1200, quality = 100)
+    #pdff <- "traveltimes_all_percent_de.pdf"
+    #kwb.utils::preparePdf(pdff)
 
     traveltimes_df <- lapply(traveltimes_list, function(sublist) sublist %>% dplyr::bind_rows()) %>%
       dplyr::bind_rows(.id = "scenario_main_raw") %>%
       dplyr::mutate(
         scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>% stringr::str_remove_all("tracer_"),
-        scenario_main =  scenario_main_raw %>% extrahiere_letzte_drei_teile(),
+        scenario_main =  scenario_main_raw %>% extrahiere_letzte_drei_teile() %>% stringr::str_remove("_tracer") %>%
+          stringr::str_remove("irrig-period_") %>% stringr::str_remove("_long"),
         quarter = lubridate::quarter(date) %>% as.factor(),
         soil_depth =  stringr::str_extract(scenario_name, "soil-.*m") %>%
-          stringr::str_remove_all("soil-|m") %>%  as.factor())
+          stringr::str_remove_all("soil-|m") %>%  as.factor(),
+        irrigation_interval = stringr::str_extract(scenario_name, pattern = "irrig.*") %>% stringr::str_extract("[0-9]+"),
+        label_x = sprintf("Bo%sBi%s", soil_depth, irrigation_interval)
+        ) %>%
+      tidyr::separate(col = scenario_main, into = c("irrigation_period", "climate"), sep = "_", remove = FALSE) %>%
+      dplyr::mutate(climate = dplyr::case_when(climate == "wet" ~ "N835",
+                                               climate == "dry" ~ "N380",
+                                               .default = "N606"),
+                    irrigation_period = dplyr::if_else(irrigation_period == "growing-season", "B289", "B405"),
+                    label_legend = sprintf("%s%s", climate, irrigation_period))
+
 
     scenario_base_median <- traveltimes_df %>%
       dplyr::filter(
         scenario_name == "soil-2m_irrig-10days",
-        scenario_main == "irrig-period_status-quo_long_tracer",
+        scenario_main == "status-quo",
         percentiles == 0.5
       ) %>%
       dplyr::select(- time_top, - time_bot) %>%
@@ -1421,7 +1437,76 @@ kwb.utils::finishAndShowPdf(pdff)
     traveltimes_bp <- traveltimes_df %>%
       dplyr::filter(percentiles == 0.5) %>%
       dplyr::left_join(scenario_base_median[, c("month_id", "time_diff_base")] %>% dplyr::mutate(percentiles = 0.5)) %>%
-      dplyr::mutate(time_diff_percent = 100 + 100 * (time_diff - time_diff_base) / time_diff_base)
+      dplyr::mutate(time_diff_percent = 100 + 100 * (time_diff - time_diff_base) / time_diff_base) %>%
+      dplyr::filter(!is.na(time_diff_percent))
+
+  # Plotting ---------------------------------------------------------------------
+
+  y_lim <- c(0,350)
+
+  tt_bp_percent <- traveltimes_bp %>%
+    ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(as.factor(label_x), time_diff_percent),
+                                 y = time_diff_percent,
+                                 col = label_legend)) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    # ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
+    #   jitter.width = 0.1,
+    #   dodge.width = 0.75),
+    #   alpha = 0.6) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::labs(y = "Mittlere Verweilzeit (%) im Vergleich zu Status Quo",
+                  x = "Bodenmächtigkeit (m) und Bewässerungsintervall (Tage)",
+                  col = "Niederschlag und Bew\u00E4sserung (mm/Jahr)",
+                  title = "") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(#legend.position=c(0.85,0.85),
+                   legend.box.just = "left",
+                   legend.direction = "vertical",
+                   legend.position = "top",
+                   legend.margin = ggplot2::margin(),
+                   legend.text = ggplot2::element_text(size = 14),# face = "bold"),  # Größer und dick
+                   legend.title = ggplot2::element_text(size = 15, face = "bold"),
+                   axis.text.x = ggplot2::element_text(size = 14, face = "bold"),
+                   axis.text.y = ggplot2::element_text(size = 14, face = "bold"),  # Größer und dick
+                   axis.title.x = ggplot2::element_text(size = 15, face = "bold"),  # Größer und dick
+                   axis.title.y = ggplot2::element_text(size = 15, face = "bold"),
+                   plot.title = ggplot2::element_text(size = 17, face = "bold"),
+                   plot.subtitle = ggplot2::element_text(size = 15) #,   # Größer und dick
+                   #plot.subtitle = ggplot2::element_text(size = 14, face = "bold")
+    ) +
+    ggplot2::guides(color = ggplot2::guide_legend(nrow = 1, byrow = FALSE))
+
+  print(tt_bp_percent)
+
+
+  #kwb.utils::finishAndShowPdf(pdff)
+  dev.off()
+
+  pdff <- "traveltimes_all_percent_en.pdf"
+  kwb.utils::preparePdf(pdff)
+
+  traveltimes_df <- lapply(traveltimes_list, function(sublist) sublist %>% dplyr::bind_rows()) %>%
+    dplyr::bind_rows(.id = "scenario_main_raw") %>%
+    dplyr::mutate(
+      scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>% stringr::str_remove_all("tracer_"),
+      scenario_main =  scenario_main_raw %>% extrahiere_letzte_drei_teile(),
+      quarter = lubridate::quarter(date) %>% as.factor(),
+      soil_depth =  stringr::str_extract(scenario_name, "soil-.*m") %>%
+        stringr::str_remove_all("soil-|m") %>%  as.factor())
+
+  scenario_base_median <- traveltimes_df %>%
+    dplyr::filter(
+      scenario_name == "soil-2m_irrig-10days",
+      scenario_main == "irrig-period_status-quo_long_tracer",
+      percentiles == 0.5
+    ) %>%
+    dplyr::select(- time_top, - time_bot) %>%
+    dplyr::rename(time_diff_base = time_diff)
+
+  traveltimes_bp <- traveltimes_df %>%
+    dplyr::filter(percentiles == 0.5) %>%
+    dplyr::left_join(scenario_base_median[, c("month_id", "time_diff_base")] %>% dplyr::mutate(percentiles = 0.5)) %>%
+    dplyr::mutate(time_diff_percent = 100 + 100 * (time_diff - time_diff_base) / time_diff_base)
 
   # Plotting ---------------------------------------------------------------------
 
