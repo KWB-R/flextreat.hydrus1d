@@ -180,9 +180,10 @@ provide_soil_columns <- function(path)
 {
   `%>%` <- magrittr::`%>%`
 
-  kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
+  x <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
     janitor::clean_names() %>%
-    dplyr::mutate(half_life_days = dplyr::case_when(
+    dplyr::mutate(substanz_name = stringr::str_trim(substanz_name),
+                  half_life_days = dplyr::case_when(
       grepl(">", hwz_tage) ~ hwz_tage %>%
         stringr::str_remove(">") %>%
         as.numeric() %>%
@@ -194,6 +195,14 @@ provide_soil_columns <- function(path)
       grepl("-", hwz_tage) ~ get_mean(hwz_tage),
       .default = as.numeric(hwz_tage) %>%
         round(digits = 2)),
+      class_id = dplyr::case_when(
+        half_life_days < 20 ~ "I",
+        half_life_days >= 20 & half_life_days < 200 ~ "II",
+        half_life_days >= 200 ~ "III"),
+      class_hlt = dplyr::case_when(
+        half_life_days < 20 ~ "< 20 Tage",
+        half_life_days >= 20 & half_life_days < 200 ~ "20 - 200 Tage",
+        half_life_days >= 200 ~ ">= 200 Tage"),
       retard = dplyr::case_when(
         grepl("-", retardation) ~ get_mean(retardation),
         is.na(retardation) ~ 1L,
@@ -202,13 +211,24 @@ provide_soil_columns <- function(path)
     dplyr::filter(!is.na(half_life_days)) %>%
     dplyr::mutate(id = 1:dplyr::n()) %>%
     dplyr::relocate(id) # %>% dplyr::mutate(retard = 1, half_life_days = 0)
+
+  x %>%
+    dplyr::left_join(x %>%
+                       dplyr::count(class_id) %>%
+    dplyr::rename(class_nsubstances = n)) %>%
+    dplyr::mutate(class_label = sprintf("%s (%s, %2d Stoffe)",
+                                        class_id,
+                                        class_hlt,
+                                        class_nsubstances))
+
 }
 
 # MAIN -------------------------------------------------------------------------
 
 #path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_2_Boden-Grundwasser/daten_karten/Sickerwasserprognose/column-studies/Stoffeigenschaften_Säulen.xlsx"
 #path <- "Y:/WWT_Department/Projects/FlexTreat/Work-packages/AP3/3_1_4_Prognosemodell/StofflicheModellrandbedingungen.xlsx"
-path <- "C:/hydrus1d/StofflicheModellrandbedingungen.xlsx"
+root_path <- "D:/hydrus1d/all-substances"
+path <- file.path(root_path, "StofflicheModellrandbedingungen.xlsx")
 
 soil_columns <- provide_soil_columns(path)
 
@@ -366,7 +386,7 @@ provide_paths <- function(config, start, end)
   tracer <- config$treatment == "tracer"
   # Define a path grammar
   PATH_GRAMMAR <- list(
-    exe_dir = sprintf("C:/hydrus1d/<irrig_dir_string>/<duration_string><extreme_rain_string>/%s", config$retardation_scenario),
+    exe_dir = sprintf("D:/hydrus1d/all-substances/<irrig_dir_string>/<duration_string><extreme_rain_string>/%s", config$retardation_scenario),
     model_name_org = "model_to_copy",
     model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>",
     ###model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
@@ -375,7 +395,7 @@ provide_paths <- function(config, start, end)
     model_gui_path = "<exe_dir>/<model_name>.h1d",
     modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
 
-    model_dir_org = "C:/hydrus1d/<model_name_org>",
+    model_dir_org = "D:/hydrus1d/<model_name_org>",
 
     model_dir = "<exe_dir>/<model_name>",
     model_dir_vs = "<exe_dir>/<model_name>_vs",
@@ -831,7 +851,7 @@ if (FALSE)
 
   #root_path <- "D:/hydrus1d/irrig_fixed_01"
   #root_path <- "C:/kwb/projects/flextreat/3_1_4_Prognosemodell/Vivian/Rohdaten/irrig_fixed"
-  root_path <- "C:/hydrus1d"
+  root_path <- "D:/hydrus1d/all-substances"
 
   scenario_dirs <- fs::dir_ls(
     path =   root_path,
@@ -922,11 +942,12 @@ if (FALSE)
     }
   )
 
-  load_default_paths <- fs::dir_ls("C:/hydrus1d/irrig-period_status-quo", recurse = TRUE, regexp = sprintf("long/%s/ablauf_ka_median_soil-2m_irrig-10days_.*vs/hydrus_scenarios.xlsx",  retardation_short))
+  load_default_paths <- fs::dir_ls("D:/hydrus1d/all-substances/irrig-period_status-quo", recurse = TRUE, regexp = sprintf("long/%s/ablauf_ka_median_soil-2m_irrig-10days_.*vs/hydrus_scenarios.xlsx",  retardation_short))
 
  # load_default <- res_stats$`D:/hydrus1d/irrig_fixed_01/irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-2m_irrig-10days_soil-column_0105_vs/hydrus_scenarios.xlsx`
-  load_default <- res_stats[load_default_paths] %>%
+  load_default <-  res_stats %>%
     dplyr::bind_rows(.id = "path") %>%
+    dplyr::filter(path %in% load_default_paths) %>%
     # dplyr::mutate(retardation = basename(dirname(dirname(path))),
     #               duration = basename(dirname(dirname(dirname(path)))),
     #               irrigation_period = basename(dirname(dirname(dirname(dirname((path))))))) %>%
@@ -935,23 +956,110 @@ if (FALSE)
   names(load_default)[3:5] <- paste0("default_",   names(load_default)[3:5])
 
 
-  res_stats_df <- dplyr::bind_rows(res_stats) %>%
+  res_stats_df <- dplyr::bind_rows(res_stats, .id = "path") %>%
     dplyr::mutate(retardation = basename(dirname(dirname(path))),
                   duration = basename(dirname(dirname(dirname(path)))),
                   irrigation_period = basename(dirname(dirname(dirname(dirname((path))))))) %>%
-    dplyr::select(- path, - mass_balance_error_percent, - soil)
+    dplyr::select(- path, - mass_balance_error_percent, - soil) %>%
+    tidyr::separate(col = scen, into = c("treatment", "soil_depth_irrig"), sep = "n_s", remove = FALSE) %>%
+    dplyr::mutate(treatment = sprintf("%sn", treatment),
+                  soil_depth_irrig = sprintf("s%s", soil_depth_irrig)) %>%
+    tidyr::separate(col = soil_depth_irrig, into = c("soil_depth", "irrigation_intervall"), sep = "_", remove = FALSE) %>%
+    dplyr::mutate(duration_irrigperiod = paste0(duration, "_", irrigation_period))
+
+
+  substances_per_class <- soil_columns %>%
+    dplyr::count(class)
+
+  res_stats_df_class <- res_stats_df %>%
+    dplyr::left_join(soil_columns %>%  dplyr::select(substanz_name, class_id, class_label)) %>%
+    dplyr::group_by(scen, treatment, soil_depth, irrigation_intervall, duration, irrigation_period, class_id, class_label) %>%
+    dplyr::summarise(dplyr::across(c(sum_cv_top, sum_cv_bot), ~abs(sum(.x, na.rm = TRUE))),
+                     number_of_substances = dplyr::n()) %>%
+    dplyr::mutate(scenario_label = dplyr::case_when(
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Status Quo",
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long_wet" & irrigation_period == "irrig-period_status-quo" ~ "Klima, feucht",
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long_dry" & irrigation_period == "irrig-period_status-quo" ~ "Klima, trocken",
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_growing-season" ~ "Bewässerung (nur Mai-Sep)",
+       scen == "ablauf_o3_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Ozone-UV",
+       scen == "ablauf_ka_median_soil-1m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden 1 m",
+       scen == "ablauf_ka_median_soil-3m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden 3 m",
+       scen == "ablauf_ka_median_soil-2m_irrig-01days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Bewässerungsintervall 1 Tag",
+       .default = ""
+    ))
+
+  View(res_stats_df_class)
+
+  res_stats_df_class_selected <- res_stats_df_class %>%
+    dplyr::filter(scenario_label != "") #%>%
+    #dplyr::mutate(sum_cv_bot = 2.7e+07*10*sum_cv_bot/10e+9/10e+3,
+    #              sum_cv_top = 2.7e+07*10*sum_cv_top/10e+9/10e+3)
+
+  res_stats_df_class_selected_agg <- res_stats_df_class_selected %>%
+    dplyr::group_by(scenario_label) %>%
+    dplyr::summarise(total_sum_cv_bot = sum(sum_cv_bot)*10*irrigation$irrigation_area_sqm[1]/10e+9/10e3,
+                     total_sum_cv_top = sum(sum_cv_top)*10*irrigation$irrigation_area_sqm[1]/10e+9/10e3,
+                     tot = total_sum_cv_bot + total_sum_cv_top,
+                     percent_gw = total_sum_cv_bot/total_sum_cv_top)
+
+  res_stats_df_class_selected_agg %>%
+    dplyr::mutate(total_sum_cv_top_remainder = total_sum_cv_top - total_sum_cv_bot) %>%
+    dplyr::select(-total_sum_cv_top) %>%
+  tidyr::pivot_longer(cols = tidyselect::starts_with("total"),
+                      names_to = "variable",
+                      values_to = "value") %>%
+  dplyr::mutate(variable = dplyr::case_when(
+    variable == "total_sum_cv_bot" ~ "Grundwasser",
+    variable == "total_sum_cv_top_remainder" ~ "Boden",
+    .default = variable),
+    perc_gw = dplyr::if_else(variable == "Grundwasser",
+                             100*percent_gw,
+                             100 - 100*percent_gw)) %>%
+  ggplot2::ggplot(ggplot2::aes(fill = variable,
+                  y = value,
+                  x = forcats::fct_reorder(scenario_label, percent_gw))) +
+  ggplot2::labs(x = "Szenario",
+                y = "Stoffeintrag in kg für Beregnungsfläche\n(Zeitraum: Mai 2017 - Dez 2023)",
+                fill = "Stoffeintrag") +
+  ggplot2::geom_bar(stat = "identity") +
+  ggplot2::geom_text(ggplot2::aes(label = sprintf("%d %%", round(perc_gw, 0))),
+                     nudge_y = -3) +
+#  ggplot2::scale_y_continuous(labels = scales::percent) +
+  ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "top")
+
+  load_status_quo <- res_stats_df_class_selected_agg %>%
+    dplyr::filter(scenario_label == "Status Quo") %>%
+    dplyr::pull(total_sum_cv_bot) %>%  sum()
+
+
+  gg <- res_stats_df_class_selected %>%
+    dplyr::left_join(res_stats_df_class_selected_agg) %>%
+    ggplot2::ggplot(ggplot2::aes(fill = class_label,
+                                 y = sum_cv_bot/load_status_quo,
+                                 x = forcats::fct_reorder(scenario_label, total_sum_cv_bot))) +
+    ggplot2::geom_bar(position = "stack", stat = "identity") +
+    ggplot2::scale_y_continuous(labels = scales::percent) +
+    ggplot2::labs(fill = "Halbwertszeitsklasse",
+                  x = "Szenario",
+                  y = "Stoffeintrag ins Grundwasser\n(% im Vergleich zum Status Quo)",
+                  title = ifelse(retardation_short == "retardation_no",
+                                 "ohne Retardation",
+                                 "mit Retardation")) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "top")
+
+  gg
+
+  plotly::ggplotly(gg)
 
 
   res_stats_df <- res_stats_df %>%
     dplyr::left_join(load_default, by = c("substanz_nr", "substanz_name")) %>%
     dplyr::mutate(percental_load_gw = dplyr::if_else(abs(default_sum_cv_bot) < 10000 | abs(sum_cv_bot) < 10000,
                                                      NA_real_,
-                                                     100 + 100 * (abs(sum_cv_bot) - abs(default_sum_cv_bot)) /  abs(default_sum_cv_bot))) %>%
-    tidyr::separate(col = scen, into = c("treatment", "soil_depth_irrig"), sep = "n_s") %>%
-    dplyr::mutate(treatment = sprintf("%sn", treatment),
-                  soil_depth_irrig = sprintf("s%s", soil_depth_irrig)) %>%
-    tidyr::separate(col = soil_depth_irrig, into = c("soil_depth", "irrigation_intervall"), sep = "_", remove = FALSE) %>%
-    dplyr::mutate(duration_irrigperiod = paste0(duration, "_", irrigation_period))
+                                                     100 + 100 * (abs(sum_cv_bot) - abs(default_sum_cv_bot)) /  abs(default_sum_cv_bot)))
+
 
   de <- TRUE
 
@@ -1027,6 +1135,12 @@ if (FALSE)
 
   substances <- unique(res_stats_df$substanz_name)[order(unique(res_stats_df$substanz_name))]
 
+  substances2 <- soil_columns_plot %>%
+    dplyr::select(substanz_name, half_life_days, retard) %>%
+    dplyr::filter(substanz_name %in% substances) %>%
+    dplyr::arrange(half_life_days, retard) %>%
+    dplyr::pull(substanz_name)
+
   substance <- substances[1]
 
   jpeg(filename = "cardensartan.jpeg", height = 500, width = 1200, quality = 100)
@@ -1075,14 +1189,15 @@ if (FALSE)
   dev.off()
 
 
-  pdff <- sprintf("percental-load-to-groundwater_per-substance_%s_%s.pdf",
+  pdff <- sprintf("%02d_percental-load-to-groundwater_per-substance_%s_%s.pdf",
+                  length(substances),
                   stringr::str_replace(retardation_short, "_", "-"),
                   lang_id)
   #kwb.utils::preparePdf(pdff, borderHeight.cm = 0,  borderWidth.cm = 0, width.cm = 32.67, height.cm = 23.1)
   kwb.utils::preparePdf(pdff)
 
 
-  sapply(substances, function(substance) {
+  sapply(substances2, function(substance) {
 
    substance_meta  <- soil_columns_plot[soil_columns_plot$substanz_name == substance,]
 
