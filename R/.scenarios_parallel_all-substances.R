@@ -955,6 +955,8 @@ if (FALSE)
 
   names(load_default)[3:5] <- paste0("default_",   names(load_default)[3:5])
 
+  load_default_sum <- as.data.frame(t(abs(colSums(load_default[3:5]))))
+
 
   res_stats_df <- dplyr::bind_rows(res_stats, .id = "path") %>%
     dplyr::mutate(retardation = basename(dirname(dirname(path))),
@@ -969,7 +971,7 @@ if (FALSE)
 
 
   substances_per_class <- soil_columns %>%
-    dplyr::count(class)
+    dplyr::count(class_id)
 
   res_stats_df_class <- res_stats_df %>%
     dplyr::left_join(soil_columns %>%  dplyr::select(substanz_name, class_id, class_label)) %>%
@@ -982,27 +984,137 @@ if (FALSE)
        scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long_dry" & irrigation_period == "irrig-period_status-quo" ~ "Klima, trocken",
        scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_growing-season" ~ "Bewässerung (nur Mai-Sep)",
        scen == "ablauf_o3_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Ozone-UV",
-       scen == "ablauf_ka_median_soil-1m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden 1 m",
-       scen == "ablauf_ka_median_soil-3m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden 3 m",
-       scen == "ablauf_ka_median_soil-2m_irrig-01days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Bewässerungsintervall 1 Tag",
+       scen == "ablauf_ka_median_soil-1m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden, 1 m",
+       scen == "ablauf_ka_median_soil-3m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden, 3 m",
+       scen == "ablauf_ka_median_soil-2m_irrig-01days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Bewässerungsintervall, 1 Tag",
        .default = ""
     ))
 
-  View(res_stats_df_class)
+#  View(res_stats_df_class)
 
   res_stats_df_class_selected <- res_stats_df_class %>%
     dplyr::filter(scenario_label != "") #%>%
     #dplyr::mutate(sum_cv_bot = 2.7e+07*10*sum_cv_bot/10e+9/10e+3,
     #              sum_cv_top = 2.7e+07*10*sum_cv_top/10e+9/10e+3)
 
-  res_stats_df_class_selected_agg <- res_stats_df_class_selected %>%
+  load_gw <- res_stats_df_class_selected %>%
+    dplyr::group_by(scenario_label) %>%
+    dplyr::summarise(total_sum_cv_bot = sum(sum_cv_bot))
+
+  load_default_per_class <- res_stats_df_class_selected %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(scenario_label == "Status Quo") %>%
+    dplyr::group_by(class_label) %>%
+    dplyr::rename(default_class_sum_cv_top = sum_cv_top,
+                  default_class_sum_cv_bot = sum_cv_bot)  %>%
+    dplyr::summarize(default_class_sum_cv_top = sum(default_class_sum_cv_top),
+                     default_class_sum_cv_bot = sum(default_class_sum_cv_top))  %>%
+    dplyr::select(class_label, default_class_sum_cv_top, default_class_sum_cv_bot)
+
+
+
+  load_per_scenario_and_class <- res_stats_df_class %>%
+    dplyr::group_by(scenario_label, class_label) %>%
+    dplyr::rename(class_sum_cv_top = sum_cv_top,
+                  class_sum_cv_bot = sum_cv_bot)  %>%
+    dplyr::summarize(class_sum_cv_top = sum(class_sum_cv_top),
+                     class_sum_cv_bot = sum(class_sum_cv_bot))  %>%
+    dplyr::select(scenario_label, class_label, class_sum_cv_top, class_sum_cv_bot)
+
+
+
+    load_per_scenario <- res_stats_df_class %>%
+    dplyr::group_by(scenario_label) %>%
+    dplyr::rename(scenario_sum_cv_top = sum_cv_top,
+                  scenario_sum_cv_bot = sum_cv_bot)  %>%
+    dplyr::summarize(scenario_sum_cv_top = sum(scenario_sum_cv_top),
+                     scenario_sum_cv_bot = sum(scenario_sum_cv_bot))  %>%
+    dplyr::select(scenario_label, scenario_sum_cv_top, scenario_sum_cv_bot)
+
+
+    x_desired_order <- c("Status Quo",
+                         "Boden, 1 m",
+                         "Boden, 3 m",
+                         "Klima, trocken",
+                         "Klima, feucht",
+                         "Bewässerungsintervall, 1 Tag",
+                         "Bewässerung (nur Mai-Sep)",
+                         "Ozone-UV"
+                         )
+
+    gg0 <- res_stats_df_class_selected %>%
+      #dplyr::filter(scenario_label %in% c("Bewässerung (nur Mai-Sep)", "Status Quo", "Ozone-UV")) %>%
+      # dplyr::group_by(scenario_label,  class_label) %>%
+      # dplyr::summarise(total_sum_cv_bot = sum(sum_cv_bot),
+      #                  total_sum_cv_top = sum(sum_cv_top)) %>%
+      dplyr::bind_cols(load_default_sum) %>%
+      dplyr::left_join( load_per_scenario_and_class) %>%
+      dplyr::mutate(percent_sum_cv_bot =  class_sum_cv_bot / default_sum_cv_top,
+                    percent_sum_cv_top =  class_sum_cv_top / default_sum_cv_top,
+                    percent_gw = percent_sum_cv_bot/percent_sum_cv_top) %>%
+    #dplyr::mutate(percent_sum_cv_top_remainder = percent_sum_cv_top - percent_sum_cv_bot) %>%
+    tidyr::pivot_longer(cols = tidyselect::starts_with("percent_sum"),
+                        names_to = "variable",
+                        values_to = "value") %>%
+    dplyr::mutate(variable = dplyr::case_when(
+      variable == "percent_sum_cv_bot" ~ "Grundwasser",
+      variable == "percent_sum_cv_top" ~ "Boden",
+      .default = variable),
+      perc_gw = dplyr::if_else(variable == "Grundwasser",
+                               100*percent_gw,
+                               100 - 100*percent_gw)#,
+      # value = dplyr::if_else(variable == "Grundwasser",
+      #                          - value,
+      #                          value)
+      ) %>%
+    dplyr::left_join(load_gw) %>%
+    dplyr::left_join(load_per_scenario) %>%
+    ggplot2::ggplot(ggplot2::aes(fill = class_label,
+                                 group = variable,
+                                 y = value,
+                                 x = forcats::fct_relevel(scenario_label, x_desired_order))) +
+    ggplot2::labs(x = "Szenario",
+                  y = "Gesamtfracht normiert auf den Status-Quo (%)",
+                  fill = "Stoffeintrag",
+                  title = ifelse(retardation_short == "retardation_no",
+                                 "ohne Retardation",
+                                 "mit Retardation")) +
+    ggplot2::geom_bar(stat="identity") +
+    ggplot2::facet_wrap(~ variable, scales = "fixed", ncol = 1) +
+    #ggplot2::scale_fill_manual(values = reversed_palette) +
+    ggplot2::scale_y_continuous(labels = scales::percent, breaks=seq(0, 1, 0.1), limits = c(0, 1.05)) +
+    ggplot2::geom_text(ggplot2::aes(label = dplyr::if_else(round(value*100, 0) == 0,
+                                                           "",
+                                                           sprintf("%2.1f %%",  round(value*100, 1)))),
+                       position = ggplot2::position_stack(vjust = 0.5),
+                       size = 3, color = "black") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "top")
+
+    # Extrahiere die Standardfarben von ggplot2
+    default_colors <- ggplot2::ggplot_build(gg0)$data[[1]]$fill
+
+    # Kehre die Reihenfolge der Farben um
+    reversed_colors <- rev(default_colors)
+
+    gg0 <- gg0 +
+    ggplot2::scale_fill_manual(values = reversed_colors)
+
+  png(sprintf("stoffeintrag_%s.png", retardation_short), width = 1200, height = 800)
+  gg0
+  dev.off()
+
+
+  res_stats_df_class_selected_agg <- res_stats_df_class_selected
     dplyr::group_by(scenario_label) %>%
     dplyr::summarise(total_sum_cv_bot = sum(sum_cv_bot)*10*irrigation$irrigation_area_sqm[1]/10e+9/10e3,
                      total_sum_cv_top = sum(sum_cv_top)*10*irrigation$irrigation_area_sqm[1]/10e+9/10e3,
                      tot = total_sum_cv_bot + total_sum_cv_top,
                      percent_gw = total_sum_cv_bot/total_sum_cv_top)
 
-  res_stats_df_class_selected_agg %>%
+
+
+  gg1 <- res_stats_df_class_selected_agg %>%
     dplyr::mutate(total_sum_cv_top_remainder = total_sum_cv_top - total_sum_cv_bot) %>%
     dplyr::select(-total_sum_cv_top) %>%
   tidyr::pivot_longer(cols = tidyselect::starts_with("total"),
@@ -1015,41 +1127,71 @@ if (FALSE)
     perc_gw = dplyr::if_else(variable == "Grundwasser",
                              100*percent_gw,
                              100 - 100*percent_gw)) %>%
+    dplyr::left_join(load_gw) %>%
   ggplot2::ggplot(ggplot2::aes(fill = variable,
                   y = value,
-                  x = forcats::fct_reorder(scenario_label, percent_gw))) +
+                  x = forcats::fct_reorder(scenario_label, total_sum_cv_bot))) +
   ggplot2::labs(x = "Szenario",
-                y = "Stoffeintrag in kg für Beregnungsfläche\n(Zeitraum: Mai 2017 - Dez 2023)",
-                fill = "Stoffeintrag") +
+                y = "Stoffeintrag (% im Vergleich zum Status QUo)",
+                fill = "Stoffeintrag",
+                title = ifelse(retardation_short == "retardation_no",
+                               "ohne Retardation",
+                               "mit Retardation")) +
   ggplot2::geom_bar(stat = "identity") +
+  ggplot2::scale_y_continuous(labels = scales::percent) +
   ggplot2::geom_text(ggplot2::aes(label = sprintf("%d %%", round(perc_gw, 0))),
-                     nudge_y = -3) +
-#  ggplot2::scale_y_continuous(labels = scales::percent) +
+                     nudge_y = -0.05) +
   ggplot2::theme_bw() +
   ggplot2::theme(legend.position = "top")
 
-  load_status_quo <- res_stats_df_class_selected_agg %>%
+  gg1
+
+  load_status_quo <- res_stats_df_class_selected %>%
+    dplyr::group_by(scenario_label) %>%
+    dplyr::summarise(total_sum_cv_bot = sum(sum_cv_bot)) %>%
     dplyr::filter(scenario_label == "Status Quo") %>%
     dplyr::pull(total_sum_cv_bot) %>%  sum()
 
+  share_gw_load <- res_stats_df_class_selected %>%
+    dplyr::group_by(class_label) %>%
+    dplyr::summarise(load_gw = sum(sum_cv_bot)) %>%
+    dplyr::mutate(class_load_gw_percent = 100*load_gw/sum(load_gw))
 
-  gg <- res_stats_df_class_selected %>%
+  share_sw_load <- res_stats_df_class_selected %>%
+    dplyr::group_by(class_label) %>%
+    dplyr::summarise(load_sw = sum(sum_cv_top)) %>%
+    dplyr::mutate(class_load_sw_percent = 100*load_sw/sum(load_sw))
+
+  gg2 <- res_stats_df_class_selected %>%
+    dplyr::left_join(share_gw_load) %>%
+    dplyr::left_join(share_sw_load) %>%
+    dplyr::mutate(class_label = stringr::str_remove(class_label, "\\)")) %>%
+    dplyr::mutate(class_label = sprintf("%s, %3.1f %% Oberflächenstoffeintrag, %3.1f %% GW-Fracht)",
+                                        class_label,
+                                        class_load_sw_percent,
+                                        class_load_gw_percent)) %>%
     dplyr::left_join(res_stats_df_class_selected_agg) %>%
     ggplot2::ggplot(ggplot2::aes(fill = class_label,
                                  y = sum_cv_bot/load_status_quo,
                                  x = forcats::fct_reorder(scenario_label, total_sum_cv_bot))) +
     ggplot2::geom_bar(position = "stack", stat = "identity") +
-    ggplot2::scale_y_continuous(labels = scales::percent) +
+    # ggplot2::scale_y_log10(labels = scales::percent) +
+    ggplot2::geom_text(ggplot2::aes(label = sprintf("%3.1f %%", round(100 * sum_cv_bot/load_status_quo, 1))),
+                       position = ggplot2::position_stack(vjust = 0.5),
+                       size = 3, color = "black") +
     ggplot2::labs(fill = "Halbwertszeitsklasse",
                   x = "Szenario",
-                  y = "Stoffeintrag ins Grundwasser\n(% im Vergleich zum Status Quo)",
-                  title = ifelse(retardation_short == "retardation_no",
-                                 "ohne Retardation",
-                                 "mit Retardation")) +
+                  y = "Stoffeintrag ins Grundwasser (% im Vergleich zum Status Quo)"#,
+                  # title = ifelse(retardation_short == "retardation_no",
+                  #                "ohne Retardation",
+                  #                "mit Retardation")
+                  ) +
     ggplot2::theme_bw() +
     ggplot2::theme(legend.position = "top")
 
-  gg
+  gg2
+
+  gridExtra::grid.arrange(gg1, gg2, ncol = 1)
 
   plotly::ggplotly(gg)
 
