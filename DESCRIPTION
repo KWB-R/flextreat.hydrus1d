@@ -43,6 +43,7 @@ Suggests:
     kwb.dwd,
     kwb.python,
     plotly,
+    openxlsx,
     reticulate,
     rmarkdown,
     soilDB

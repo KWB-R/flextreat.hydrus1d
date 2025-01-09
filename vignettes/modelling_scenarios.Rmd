@@ -294,7 +294,7 @@ provide_soil_columns <- function(path)
 {
   `%>%` <- magrittr::`%>%`
 
-  x <- kwb.db::hsGetTable(path, "my_results2", stringsAsFactors = FALSE) %>%
+  x <- openxlsx::read.xlsx(path, namedRegion = "my_results2") %>%
     janitor::clean_names() %>%
     dplyr::mutate(substanz_name = stringr::str_trim(substanz_name),
                   half_life_days = dplyr::case_when(
