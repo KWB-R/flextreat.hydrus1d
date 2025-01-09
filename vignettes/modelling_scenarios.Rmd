@@ -1,0 +1,1215 @@
+---
+title: "Modelling with R: Scenario Analysis"
+subtitle: 
+author: "Michael Rustler"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Modelling with R: Scenario Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+is_windows <- .Platform$OS.type == "windows"
+```
+
+The HYDRUS-1D model developed within the [Modelling R: Status Quo (2017-05-01 - 2020-10-31)](https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_r.html) 
+workflow as updated and extended for a longer time period, i.e. 2017-05-01 - 2023-12-31. 
+This model serves now as reference scenario for the later calculations and its 
+input data files were added to this R package in the folder `extdata/model/model_to_copy`.
+
+The idea was to copy the base scenario input data structure, and modify only the 
+required input data for each scenario. Please note that the calculation of all 
+scenarios requires a lot of hard disk space (~ 600 GB) and may an additional external 
+hard disk. In addition the calculation time for all scenarios will be several days 
+in case of single core calculation, which reduces approximately linearly if more 
+cores are used. However, there might be cases (calculation errors on some nodes 
+during parallel computing) which could require to switch to single core computation.
+
+
+
+
+## Install R Package
+
+```{r eval=FALSE}
+# Enable this universe
+options(repos = c(
+  kwbr = 'https://kwb-r.r-universe.dev',
+  CRAN = 'https://cloud.r-project.org'))
+# Install R package
+install.packages('flextreat.hydrus1d')
+```
+
+## Define Paths
+
+```{r define_paths, eval=is_windows}
+root_dir <- fs::dir_create(fs::path_abs(file.path(tempdir())))
+fs::dir_copy(system.file("extdata/model/model_to_copy", package = "flextreat.hydrus1d"),
+             file.path(root_dir, "model_to_copy"),
+             overwrite = TRUE)
+
+provide_paths <- function(root_dir, config, start, end)
+{
+  #Y:\WWT_Department\Projects\FlexTreat\Work-packages\AP3\3_1_4_Prognosemodell\Hydrus1D\irrig_fixed\irrig-period_status-quo\long_dry\retardation_no
+  tracer <- config$treatment == "tracer"
+  # Define a path grammar
+  PATH_GRAMMAR <- list(
+    exe_dir = sprintf("%s/<irrig_dir_string>/<duration_string><extreme_rain_string>/%s", root_dir, config$retardation_scenario),
+    model_name_org = "model_to_copy",
+    model_name = "<location>_<scenario>_soil-column_<solute_id_start><solute_id_end>",
+    ###model_gui_path_org =  "<exe_dir>/<model_name_org>.h1d",
+    model_gui_path_org =  "<model_dir_org>/<model_name_org>.h1d",
+
+    model_gui_path = "<exe_dir>/<model_name>.h1d",
+    modelvs_gui_path = "<exe_dir>/<model_name>_vs.h1d",
+
+    model_dir_org = sprintf("%s/<model_name_org>", root_dir),
+
+    model_dir = "<exe_dir>/<model_name>",
+    model_dir_vs = "<exe_dir>/<model_name>_vs",
+    atmosphere = "<model_dir>/ATMOSPH.IN",
+    atmosphere_vs = "<model_dir_vs>/ATMOSPH.IN",
+    a_level = "<model_dir>/A_LEVEL.out",
+    hydrus1d = "<model_dir>/HYDRUS1D.DAT",
+    selector = "<model_dir>/SELECTOR.IN",
+    profile = "<model_dir>/PROFILE.DAT",
+    obs_node = "<model_dir>/Obs_Node.out",
+    balance = "<model_dir>/BALANCE.out",
+    t_level = "<model_dir>/T_LEVEL.out",
+    t_level_vs = "<model_dir_vs>/T_LEVEL.out",
+    runinf = "<model_dir>/Run_Inf.out",
+    solute_id = "1",
+    solute = "<model_dir>/solute<solute_id>.out",
+    solute_vs = "<model_dir_vs>/solute<solute_id>.out",
+    soil_data = "<extdata>/input-data/soil/soil_geolog.csv",
+    solute_id_start = sprintf("%02d", start),
+    solute_id_end = sprintf("%02d", end),
+    location = if (tracer) {
+      "tracer"
+    } else {
+      sprintf("ablauf_%s_median", config$treatment)
+    } #"ablauf_ka_median"
+  )
+
+  # Resolve the path grammar by replacing the placeholders recursively
+  kwb.utils::resolve(
+    PATH_GRAMMAR,
+    irrig_dir_string = ifelse(
+      config$irrig_only_growing_season,
+      "irrig-period_growing-season",
+      "irrig-period_status-quo"
+    ),
+    duration_string = config$duration_string,
+    extreme_rain_string = if (config$extreme_rain != "") {
+      paste0("_", config$extreme_rain)
+    } else {
+      ""
+    },
+    #final_subdir = ifelse(tracer, "tracer", config$retardation_scenario),
+    scenario = config$scenario
+  )
+}
+
+```
+
+## Provide Helper Functions
+
+```{r eval=TRUE}
+library(magrittr)
+library(flextreat.hydrus1d)
+
+# get_atm ----------------------------------------------------------------------
+get_atm <- function(atm, extreme_rain = NULL)
+{
+  `%>%` <- magrittr::`%>%`
+
+  if (is.null(extreme_rain)) {
+    return(atm)
+  }
+
+  if (!extreme_rain %in% c("dry", "wet")) {
+    stop("extreme_rain has to be either 'NULL', 'dry' or 'wet")
+  }
+
+  atm <- atm %>%
+    dplyr::mutate(
+      hydrologic_year = flextreat.hydrus1d::get_hydrologic_years(date),
+      year = as.integer(format(date, format = "%Y")),
+      day_of_year = lubridate::yday(date)
+    )
+
+  atm_stats <- atm %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarise(
+      rain_mm = sum(rain_mm, na.rm = TRUE),
+      evapo_p_mean_mm = sum(evapo_p_mean_mm, na.rm = TRUE)
+    )
+
+  if (extreme_rain == "dry") {
+
+    atm_dry <- atm_stats %>%
+      dplyr::filter(rain_mm == min(rain_mm))
+
+    atm_dry_sel <- atm %>%
+      dplyr::filter(year == atm_dry$year) %>%
+      dplyr::select(day_of_year, rain_mm)
+
+    atm_dry_input <- atm %>%
+      dplyr::select(- rain_mm, - hydrologic_year, - year) %>%
+      dplyr::left_join(atm_dry_sel) %>%
+      dplyr::mutate(rain_mm = dplyr::if_else(is.na(rain_mm), 0, rain_mm)) %>%
+      dplyr::select(- day_of_year) %>%
+      dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
+
+    return(atm_dry_input)
+  }
+
+  if (extreme_rain == "wet") {
+    atm_wet <- atm_stats %>%
+      dplyr::filter(rain_mm == max(rain_mm))
+
+    atm_wet_sel <- atm %>%
+      dplyr::filter(year == atm_wet$year) %>%
+      dplyr::select(day_of_year, rain_mm)
+
+    atm_wet_input <- atm %>%
+      dplyr::select(- rain_mm, - hydrologic_year, - year) %>%
+      dplyr::left_join(atm_wet_sel) %>%
+      dplyr::mutate(rain_mm = dplyr::if_else(is.na(rain_mm), 0, rain_mm)) %>%
+      dplyr::select(- day_of_year) %>%
+      dplyr::relocate(rain_mm, .after = clearwater.mmPerDay)
+
+    return(atm_wet_input)
+  }
+}
+
+# prepare_solute_input ---------------------------------------------------------
+prepare_solute_input <- function(
+    dat,
+    selector,
+    Ks = NULL,
+    SnkL1 = NULL,
+    diff_w = 0, diff_g = 0,
+    kd = NULL,
+    halftime_to_firstorderrate = NULL
+)
+{
+  `%>%` <- magrittr::`%>%`
+
+  stopifnot(nrow(dat) <= 10)
+
+  if (selector$solute$No.Solutes != nrow(dat)) {
+    selector$solute$No.Solutes <- nrow(dat)
+  }
+
+  solute_names <- sprintf("solute_%d", seq_len(nrow(dat)))
+
+  solutes_new <- setNames(nm = solute_names, lapply(seq_len(nrow(dat)), function(i) {
+
+    dat_sel <- dat[i,]
+
+    ks <- kd(
+      porosity = selector$waterflow$soil$ths - selector$waterflow$soil$thr,
+      retardation = dat_sel$retard,
+      bulk_density = selector$solute$transport$Bulk.d.
+    )
+
+    cols <- c(
+      "Ks", "Nu", "Beta", "Henry", "SnkL1", "SnkS1", "SnkG1", "SnkL1'",
+      "SnkS1'", "SnkG1'", "SnkL0",  "SnkS0", "SnkG0",  "Alfa"
+    )
+
+    reaction <- matrix(data = 0, ncol = length(cols), nrow = length(ks)) %>%
+      as.data.frame() %>%
+      tibble::as_tibble()
+
+    names(reaction) <- cols
+    reaction$Beta <- 1
+
+    reaction$Ks <- if (is.null(Ks)) {
+      round(ks, 2)
+    } else {
+      Ks
+    }
+
+    reaction$SnkL1 <- if (is.null(SnkL1)) {
+      round(halftime_to_firstorderrate(dat_sel$half_life_days), 5)
+    } else {
+      SnkL1
+    }
+
+    list(
+      diffusion = tibble::tibble(DifW = diff_w, DifG = diff_g),
+      reaction = reaction
+    )
+
+  }))
+
+  sel_tmp <- selector$solute[!names(selector$solute) %in% solute_names]
+
+  solutes_new_list <- c(
+    sel_tmp[1:which(names(sel_tmp) == "transport")],
+    solutes_new,
+    sel_tmp[which(names(sel_tmp) == "kTopSolute"):length(sel_tmp)]
+  )
+
+  c(
+    selector[names(selector) != "solute"],
+    list(solute = solutes_new_list)
+  )
+}
+
+# get_mean ---------------------------------------------------------------------
+get_mean <- function(col)
+{
+  x <- stringr::str_split_fixed(col, "-", n = 2)
+  mode(x) <- "numeric"
+  round(rowMeans(x), digits = 2)
+}
+
+# kd ---------------------------------------------------------------------------
+kd <- function(porosity, retardation, bulk_density)
+{
+  #https://www3.epa.gov/ceampubl/learn2model/part-two/onsite/retard.html
+  (retardation - 1) * porosity / bulk_density
+}
+
+# halftime_to_firstorderrate ---------------------------------------------------
+halftime_to_firstorderrate <- function(half_time)
+{
+  if(half_time != 0) {
+    #https://chem.libretexts.org/Courses/Bellarmine_University/BU%3A_Chem_104_(Christianson)/Phase_2%3A_Understanding_Chemical_Reactions/4%3A_Kinetics%3A_How_Fast_Reactions_Go/4.5%3A_First_Order_Reaction_Half-Life#mjx-eqn-21.4.2
+    0.693 / half_time
+  } else {
+    0
+  }
+}
+
+# provide_soil_columns ---------------------------------------------------------
+provide_soil_columns <- function(path)
+{
+  `%>%` <- magrittr::`%>%`
+
+  x <- openxlsx::read.xlsx(path, namedRegion = "my_results2") %>%
+    janitor::clean_names() %>%
+    dplyr::mutate(substanz_name = stringr::str_trim(substanz_name),
+                  half_life_days = dplyr::case_when(
+      grepl(">", hwz_tage) ~ hwz_tage %>%
+        stringr::str_remove(">") %>%
+        as.numeric() %>%
+        round(digits = 2),
+      grepl("<", hwz_tage) ~ hwz_tage %>%
+        stringr::str_remove("<") %>%
+        as.numeric() %>%
+        round(digits = 2),
+      grepl("-", hwz_tage) ~ get_mean(hwz_tage),
+      .default = as.numeric(hwz_tage) %>%
+        round(digits = 2)),
+      class_id = dplyr::case_when(
+        half_life_days < 20 ~ "I",
+        half_life_days >= 20 & half_life_days < 200 ~ "II",
+        half_life_days >= 200 ~ "III"),
+      class_hlt = dplyr::case_when(
+        half_life_days < 20 ~ "< 20 Tage",
+        half_life_days >= 20 & half_life_days < 200 ~ "20 - 200 Tage",
+        half_life_days >= 200 ~ ">= 200 Tage"),
+      retard = dplyr::case_when(
+        grepl("-", retardation) ~ get_mean(retardation),
+        is.na(retardation) ~ 1L,
+        .default = as.numeric(retardation) %>%
+          round(digits = 2))) %>%
+    dplyr::filter(!is.na(half_life_days)) %>%
+    dplyr::mutate(id = 1:dplyr::n()) %>%
+    dplyr::relocate(id) # %>% dplyr::mutate(retard = 1, half_life_days = 0)
+
+  x %>%
+    dplyr::left_join(x %>%
+                       dplyr::count(class_id) %>%
+    dplyr::rename(class_nsubstances = n)) %>%
+    dplyr::mutate(class_label = sprintf("%s (%s, %2d Stoffe)",
+                                        class_id,
+                                        class_hlt,
+                                        class_nsubstances))
+
+}
+
+# generate_solute_ids ----------------------------------------------------------
+generate_solute_ids <- function(n)
+{
+  seq_start <- seq(1, n, 10)
+
+  seq_end <- if (n > 10) {
+    seq(10, n, 10)
+  } else {
+    n
+  }
+
+  if (length(seq_end) < length(seq_start)) {
+    seq_end <- c(seq_end, n)
+  }
+
+  tibble::tibble(
+    start = as.integer(seq_start),
+    end = as.integer(seq_end)
+  )
+}
+
+# generate_periods -------------------------------------------------------------
+generate_periods <- function(n)
+{
+  tibble::tibble(
+    start = seq(1, n, 10),
+    end = if (n %% 10 != 0) {
+      c(seq(10, n, 10), n)
+    } else {
+      seq(10, n, 10)
+    }
+  )
+}
+
+# prepare_files_for_irrig_int --------------------------------------------------
+prepare_files_for_irrig_int <- function(paths)
+{
+  `%>%` <- magrittr::`%>%`
+
+  p <- kwb.utils::createAccessor(paths)
+
+  copy <- function(fun, from, to) {
+    kwb.utils::catAndRun(
+      sprintf("Copying from\n  %s to\n  %s", from, to),
+      fun(path = from, new_path = to)
+    )
+  }
+
+  if (!fs::dir_exists(p("model_dir"))) {
+    copy(fs::dir_copy, from = p("model_dir_org"), to = p("model_dir"))
+  }
+
+  if (!fs::file_exists(p("model_gui_path"))) {
+    copy(fun = fs::file_copy, from = p("model_gui_path_org"), to = p("model_gui_path"))
+  }
+
+  model_out_files <- list.files(
+    p("model_dir"),
+    pattern = "\\.out$",
+    full.names = TRUE
+  )
+
+  if (length(model_out_files) > 0L) {
+    fs::file_delete(model_out_files)
+  }
+
+  soil_depth_cm <- 100 *
+    stringr::str_extract(p("model_name"), "soil-[0-9]+?m") %>%
+    stringr::str_extract("[0-9]") %>%
+    as.numeric()
+
+  if (soil_depth_cm != 200) {
+    soil_profile <- kwb.hydrus1d::read_profile(paths$profile)
+    profile_extended <- kwb.hydrus1d::extend_soil_profile(
+      soil_profile$profile,
+      x_end = -soil_depth_cm
+    )
+    soil_profile_extended <- soil_profile
+    soil_profile_extended$profile <- profile_extended
+    kwb.hydrus1d::write_profile(soil_profile_extended, path = p("profile"))
+  }
+
+  string_irrig_int <- stringr::str_extract(p("model_dir"), "[0-9][0-9]?days")
+
+  # Return the string that is used as "irrig_interval"
+  paste(
+    as.integer(stringr::str_extract(string_irrig_int, "\\d+")),
+    stringr::str_extract(string_irrig_int, "[a-z]+")
+  )
+}
+
+# sum_per_interval -------------------------------------------------------------
+sum_per_interval <- function(data, interval)
+{
+  `%>%` <- magrittr::`%>%`
+
+  data_org <- data
+  data <- dplyr::select(data, tidyselect::all_of(
+    c("date", "groundwater.mmPerDay", "clearwater.mmPerDay")
+  ))
+  cols_sum <- setdiff(names(data), "date")
+  data_summed <- data %>%
+    dplyr::mutate(
+      group = lubridate::floor_date(date, unit = interval)
+    ) %>%  # Konvertiere date in datetime-Format
+    dplyr::group_by(group) %>%  # Gruppiere nach Zeitintervallen
+    dplyr::summarise_at(
+      .vars = tidyselect::all_of(cols_sum),
+      .funs = sum
+    ) %>%   # Berechne die Summe für jedes Intervall
+    dplyr::rename(date = group)
+  data_org[, cols_sum] <- 0
+  data_org[data_org$date %in% data_summed$date, cols_sum] <- data_summed[, cols_sum]
+  data_org
+}
+
+# get_valid_exe_path -----------------------------------------------------------
+get_valid_exe_path <- function(exe_dir)
+{
+  if (file.exists(file.path(exe_dir, "H1D_CALC.exe"))) {
+    file.path(exe_dir, "H1D_CALC.exe")
+  } else {
+    fs::dir_create(exe_dir)
+    kwb.hydrus1d::check_hydrus_exe(dir = exe_dir)
+  }
+}
+
+# inner_function ---------------------------------------------------------------
+inner_function <- function(config, atm_data, soil_columns, helper, root_dir)
+{
+  `%>%` <- magrittr::`%>%`
+
+  {
+    # Define constants
+    IRRIGATION_COLUMNS <- c("groundwater.mmPerDay", "clearwater.mmPerDay")
+
+    # Provide variables from config
+    extreme_rain <- if (config$extreme_rain == "") {
+      NULL
+    } else {
+      config$extreme_rain
+    }
+    tracer <- config$treatment == "tracer"
+    no_retardation <- config$retardation == "retardation_no"
+
+    if (no_retardation) {
+      soil_columns$retard <- 1
+    }
+
+    atm <- helper("get_atm")(atm_data, extreme_rain)
+
+    if (config$irrig_only_growing_season) {
+      atm[which(!lubridate::month(atm$date) %in% 4:9), IRRIGATION_COLUMNS] <- 0
+    }
+
+    if (config$duration_string == "test") {
+      atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2018-04-30")
+    } else if (config$duration_string == "short") {
+      atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2020-04-30")
+    } else {
+      atm <- dplyr::filter(atm, date >= "2017-05-01" & date <= "2023-12-31")
+    }
+
+    days_monthly <- lubridate::days_in_month(
+      seq.Date(from = min(atm$date), to = max(atm$date), by = "month")
+    )
+
+    loop_df <- if (tracer) {
+      helper("generate_periods")(n = length(days_monthly))
+    } else {
+      helper("generate_solute_ids")(n = nrow(soil_columns))
+    }
+  }
+
+  kwb.utils::catAndRun(
+    messageText = sprintf(
+      "Running '%s' period for treatment '%s'",
+      extreme_rain,
+      config$treatment
+    ),
+    expr = {
+      sapply(seq_len(nrow(loop_df)), function(i) {
+
+        #i <- 1L
+        {
+          paths <- helper("provide_paths")(
+            root_dir,
+            config,
+            start = loop_df$start[i],
+            end = loop_df$end[i]
+          )
+
+          solute_start_id <- as.numeric(paths$solute_id_start)
+          solute_end_id <- as.numeric(paths$solute_id_end)
+          n_solutes <- solute_end_id - (solute_start_id - 1)
+
+          no_irrig <- stringr::str_detect(paths$model_dir, "no-irrig")
+          irrig_int <- stringr::str_detect(paths$model_dir, "irrig-[0-9][0-9]?days")
+        }
+
+        if (irrig_int) {
+          irrig_interval <- helper("prepare_files_for_irrig_int")(paths)
+        }
+
+        # no-irrigation
+        if (no_irrig) {
+          atm[, IRRIGATION_COLUMNS] <- 0
+        }
+
+        if (irrig_int) {
+          atm <- helper("sum_per_interval")(data = atm, interval = irrig_interval)
+        }
+
+        days_total <- cumsum(days_monthly)
+
+        indices <- seq_along(days_total)
+
+        c_tops <- lapply(indices, function(i) {
+
+          x <- rep(0, nrow(atm))
+          x_min <- ifelse(i == 1, 1, days_total[i - 1] + 1)
+          x[x_min:days_total[i]] <- rep(100, days_monthly[i])
+
+          tib <- data.frame(x)
+
+          colnames(tib) <- if (i == indices[1]) {
+            "cTop"
+          } else {
+            sprintf("cTop%d", which(indices %in% i))
+          }
+
+          tib
+        }) %>% dplyr::bind_cols()
+
+        c_tops_sel <- c_tops[, paths$solute_id_start:paths$solute_id_end]
+
+        atm_prep <- if (tracer) {
+          flextreat.hydrus1d::prepare_atmosphere(
+            atm = atm,
+            conc_irrig_clearwater = c_tops_sel,
+            conc_irrig_groundwater = c_tops_sel,
+            conc_rain = c_tops_sel
+          )
+        } else {
+          flextreat.hydrus1d::prepare_atmosphere(
+            atm = atm,
+            conc_irrig_clearwater = soil_columns[solute_start_id:solute_end_id, paths$location],
+            conc_irrig_groundwater = 0,
+            conc_rain = 0
+          )
+        }
+
+        n_tsteps <- nrow(atm_prep)
+
+        writeLines(
+          kwb.hydrus1d::write_atmosphere(atm = atm_prep),
+          paths$atmosphere
+        )
+
+        selector <- kwb.hydrus1d::read_selector(path = paths$selector)
+
+        selector$time$tMax <- n_tsteps
+        selector$time$MPL <- 250
+
+        selector$time$TPrint <- seq(0, n_tsteps, n_tsteps/selector$time$MPL)
+
+        if (selector$time$TPrint[1] == 0) {
+          selector$time$TPrint[1] <- 1
+        }
+
+        solutes_new <- helper("prepare_solute_input")(
+          dat = soil_columns[solute_start_id:solute_end_id,],
+          Ks = if (tracer) 0, # else NULL
+          SnkL1 = if (tracer) 0, # else NULL
+          selector = selector,
+          diff_w = 0,
+          diff_g = 0,
+          kd = helper("kd"),
+          halftime_to_firstorderrate = helper("halftime_to_firstorderrate")
+        )
+
+        kwb.hydrus1d::write_selector(solutes_new, paths$selector)
+
+        hydrus1d <- kwb.hydrus1d::read_hydrus1d(paths$hydrus1d)
+        hydrus1d$Main$NumberOfSolutes <- n_solutes
+        kwb.hydrus1d::write_hydrus1d(hydrus1d, paths$hydrus1d)
+
+        exe_path <- helper("get_valid_exe_path")(paths$exe_dir)
+
+        kwb.hydrus1d::run_model(
+          exe_path = exe_path,
+          model_path = paths$model_dir,
+          print_output = FALSE
+        )
+
+        atmos <- kwb.hydrus1d::read_atmosph(paths$atmosphere)
+
+        #atmos$data[names(c_tops)] <- c_tops
+
+        atm_default <- atmos
+
+        tlevel <- kwb.hydrus1d::read_tlevel(paths$t_level)
+
+        vs_atm <- flextreat.hydrus1d::recalculate_ctop_with_virtualstorage(
+          atm = atm_default$data,
+          tlevel = tlevel,
+          crit_v_top = - 0.05
+        )
+
+        atmos$data[names(vs_atm$df)] <- vs_atm$df
+
+        fs::dir_copy(paths$model_dir, paths$model_dir_vs, overwrite = TRUE)
+        fs::file_copy(paths$model_gui_path, paths$modelvs_gui_path, overwrite = TRUE)
+
+        model_vs_out_files <- list.files(paths$model_dir_vs, pattern = "\\.out$", full.names = TRUE)
+
+        if (length(model_vs_out_files) > 0) {
+          fs::file_delete(model_vs_out_files)
+        }
+
+        writeLines(
+          kwb.hydrus1d::write_atmosphere(atm = atmos$data),
+          paths$atmosphere_vs
+        )
+
+        kwb.hydrus1d::run_model(
+          exe_path = exe_path,
+          model_path = paths$model_dir_vs,
+          print_output = FALSE
+        )
+
+      })
+    },
+    dbg = TRUE
+  )
+}
+
+# helper -----------------------------------------------------------------------
+helper <- kwb.utils::createAccessor(list(
+  get_atm = get_atm,
+  generate_solute_ids = generate_solute_ids,
+  provide_paths = provide_paths,
+  prepare_files_for_irrig_int = prepare_files_for_irrig_int,
+  sum_per_interval = sum_per_interval,
+  prepare_solute_input = prepare_solute_input,
+  halftime_to_firstorderrate = halftime_to_firstorderrate,
+  get_valid_exe_path = get_valid_exe_path,
+  generate_periods = generate_periods,
+  kd = kd
+))
+
+  # extrahiere_letzte_drei_teile -------------------------------------------------
+  extrahiere_letzte_drei_teile <- function(pfad)
+  {
+    sapply(pfad, function(pf) {
+      # Teile den Pfad anhand des Schrägstrichs auf
+      teile <- unlist(strsplit(pf, "/"))
+
+      # Waehle die letzten drei Teile aus
+      letzte_drei_teile <- tail(teile, 3)
+
+      paste0(letzte_drei_teile, collapse = "_")
+    })
+  }
+
+```
+## Select Substances & Define Scenarios
+
+```{r select_substances_and_define_scenarios}
+soil_columns <- provide_soil_columns(path = system.file("extdata/input-data/StofflicheModellRandbedingungen.xlsx", 
+                                                        package = "flextreat.hydrus1d")
+                                     )
+
+### Select 1 substance for 5 different half life classes defined in this table
+selected_substances <- readr::read_csv(system.file("extdata/input-data/substance_classes.csv",
+                                                   package = "flextreat.hydrus1d"))
+
+soil_columns_selected <- soil_columns  %>%
+  dplyr::filter(substanz_nr %in% selected_substances$substance_id) %>%
+  dplyr::arrange(substanz_nr) %>%
+  dplyr::mutate(id = 1:dplyr::n())
+
+arg_combis <- kwb.utils::expandGrid(
+  extreme_rain = c("", "wet", "dry"), # "" needs to be treated as NULL!
+  treatment = c("tracer", "ka", "o3"), # "tracer" # c("ka", "o3")
+  scenario = unlist(lapply(c(1,10), function(x) {
+    paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))
+  })),
+  irrig_only_growing_season = c(TRUE, FALSE),
+  duration_string = "long", #c("short", "long"),
+  retardation_scenario = c("retardation_yes", "retardation_no")
+)
+```
+
+## Modelling 
+
+### Scenario Creation
+
+```{r scenario_creation, eval=TRUE}
+
+arg_combis <- kwb.utils::expandGrid(
+  extreme_rain = c("", "wet", "dry"), # "" needs to be treated as NULL!
+  treatment = c("ka", "o3"), # "tracer" # c("ka", "o3")
+  scenario = unlist(lapply(c(1,10), function(x) {
+    paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))
+  })),
+  irrig_only_growing_season = c(TRUE, FALSE),
+  duration_string = "long", #c("short", "long"),
+  retardation_scenario = c("retardation_yes", "retardation_no")
+)
+
+```
+
+This results in `r nrow(arg_combis)` scenarios, which are listed in detail in the table 
+below.
+
+`r  DT::datatable(arg_combis)`
+
+
+### Run the Model
+
+```{r run_model, eval=FALSE}
+atm_data <- flextreat.hydrus1d::prepare_atmosphere_data()
+
+### Convert model scenarios into valid data structure for HYDRUs-1D modelling
+  configs <- lapply(seq_len(nrow(arg_combis)), function(i) {
+    as.list(arg_combis[i, ])
+  })
+
+  # system.time({
+  # #Sequential loop
+  # for (config in configs) {
+  #   config <- configs[[1L]]
+  #   inner_function(
+  #     config = config,
+  #     atm_data = atm_data,
+  #     soil_columns = soil_columns,
+  #     helper = helper,
+  #     root_dir = root_dir
+  #   )
+  # }
+  # })
+
+
+  system.time(expr = {
+  # Parallel loop
+  ncores <- parallel::detectCores() - 1
+  cl <- parallel::makeCluster(ncores)
+
+
+  parallel::parLapply(
+    cl = cl,
+    X = configs,
+    fun = inner_function,
+    atm_data = atm_data,
+    soil_columns = soil_columns,
+    helper = helper,
+    root_dir = root_dir
+  )
+
+  parallel::stopCluster(cl)
+  }
+  )
+```
+## Post-Processing 
+
+
+### Prepare Solutes Summary
+
+```{r create_solutes_summary, eval=FALSE}
+  #scenarios_solutes <- paste0(scenarios, "_soil-column")
+  scenarios_solutes <- paste0("ablauf_", c("o3", "ka"), "_median")
+
+  scenario_dirs <- fs::dir_ls(
+    path =   root_dir,
+    recurse = TRUE,
+    regexp = "retardation_no.*vs$",
+    #regexp = "irrig-period_status-quo/long/retardation_no.*vs$",
+    #regexp = "irrig-period_status-quo/long/retardation_no/ablauf_ka_median_soil-1m_irrig-01days_soil-column_0105.*vs$",
+    type = "directory"
+  )
+
+  # Set up parallel plan
+  system.time(expr = {
+    # future::plan(future::multisession)
+
+    future.apply::future_sapply(scenario_dirs, function(scenario_dir) {
+
+      solutes_list <- setNames(lapply(scenarios_solutes, function(scenario) {
+        solute_files <- fs::dir_ls(scenario_dir,
+                                   regexp = "solute\\d\\d?.out",
+                                   recurse = TRUE)
+
+        stopifnot(length(solute_files) > 0)
+
+        solutes <- setNames(lapply(solute_files, function(file) {
+          kwb.hydrus1d::read_solute(file, dbg = TRUE)
+        }), nm = solute_files) %>% dplyr::bind_rows(.id = "path")
+
+
+        solute_files_df <- tibble::tibble(path = solute_files,
+                                          model_solute_id = path  %>%  basename() %>% stringr::str_extract(pattern = "[0-9][0-9]?") %>% as.integer(),
+                                          soilcolumn_id_start = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(1,2) %>% as.integer(),
+                                          soilcolumn_id_end = path  %>%  dirname() %>% stringr::str_extract(pattern = "[0-9]{4}") %>% stringr::str_sub(3,4) %>% as.integer(),
+                                          soil_column_id = soilcolumn_id_start + model_solute_id - 1) %>%
+          dplyr::left_join(soil_columns, by = c(soil_column_id = "id"))
+
+
+        dplyr::left_join(solutes, solute_files_df)
+      }), nm = scenarios_solutes)
+
+      solutes_df <- solutes_list %>%
+        dplyr::bind_rows(.id = "scenario")
+
+      solutes_df_stats <- solutes_df %>%
+        dplyr::bind_rows(.id = "scenario") %>%
+        dplyr::mutate(scen = stringr::str_remove(basename(dirname(path)), "_soil-column.*")) %>%
+        dplyr::group_by(path, scen,substanz_nr, substanz_name) %>%
+        dplyr::summarise(sum_cv_top = max(sum_cv_top),
+                         sum_cv_bot = min(sum_cv_bot),
+                         cv_ch1 = min(cv_ch1)) %>%
+        dplyr::mutate(mass_balance_error_percent = 100*(sum_cv_top + cv_ch1 + sum_cv_bot)/sum_cv_top) %>%
+        dplyr::arrange(mass_balance_error_percent)
+
+
+      solutes_df_stats$soil <- solutes_df_stats$sum_cv_top + solutes_df_stats$sum_cv_bot + solutes_df_stats$cv_ch1
+
+      saveRDS(solutes_df, file = file.path(scenario_dir, "solutes.rds"))
+
+      openxlsx::write.xlsx(solutes_df_stats, file = file.path(scenario_dir, "hydrus_scenarios.xlsx"))
+    })
+    # Close the parallel plan
+    future::plan(future::sequential)
+  })
+```
+
+### Create Substance Load Plots
+
+```{r create_substance_load_plots, eval=FALSE}
+
+ sapply(sprintf("retardation_%s", c("yes", "no")), function(retardation_short) { 
+   
+  soil_columns_plot <- if(retardation_short == "retardation_yes") {
+    soil_columns
+  } else {
+    soil_columns %>%
+      dplyr::mutate(retard = 1)
+  }
+
+  scenario_dirs <- fs::dir_ls(
+    path =   root_dir,
+    recurse = TRUE,
+    regexp = sprintf("%s.*vs/hydrus_scenarios.xlsx$", retardation_short),
+    type = "file"
+  )
+
+
+  res_stats <- lapply(
+    stats::setNames(nm = scenario_dirs),
+    function(scenario_dir) {
+      readxl::read_excel(scenario_dir)
+    }
+  )
+
+  load_default_paths <- fs::dir_ls(sprintf("%sirrig-period_status-quo", root_dir),
+                                   recurse = TRUE,
+                                   regexp = sprintf("long/%s/ablauf_ka_median_soil-2m_irrig-10days_.*vs/hydrus_scenarios.xlsx",  retardation_short))
+
+
+  load_default <-  res_stats %>%
+    dplyr::bind_rows(.id = "path") %>%
+    dplyr::filter(path %in% load_default_paths) %>%
+    dplyr::select(- path, - scen, - mass_balance_error_percent, - soil)
+
+  names(load_default)[3:5] <- paste0("default_",   names(load_default)[3:5])
+
+  load_default_sum <- as.data.frame(t(abs(colSums(load_default[3:5]))))
+
+
+  res_stats_df <- dplyr::bind_rows(res_stats, .id = "path") %>%
+    dplyr::mutate(retardation = basename(dirname(dirname(path))),
+                  duration = basename(dirname(dirname(dirname(path)))),
+                  irrigation_period = basename(dirname(dirname(dirname(dirname((path))))))) %>%
+    dplyr::select(- path, - mass_balance_error_percent, - soil) %>%
+    tidyr::separate(col = scen, into = c("treatment", "soil_depth_irrig"), sep = "n_s", remove = FALSE) %>%
+    dplyr::mutate(treatment = sprintf("%sn", treatment),
+                  soil_depth_irrig = sprintf("s%s", soil_depth_irrig)) %>%
+    tidyr::separate(col = soil_depth_irrig, into = c("soil_depth", "irrigation_intervall"), sep = "_", remove = FALSE) %>%
+    dplyr::mutate(duration_irrigperiod = paste0(duration, "_", irrigation_period))
+
+
+  substances_per_class <- soil_columns %>%
+    dplyr::count(class_id)
+
+  res_stats_df_class <- res_stats_df %>%
+    dplyr::left_join(soil_columns %>%  dplyr::select(substanz_name, class_id, class_label)) %>%
+    dplyr::group_by(scen, treatment, soil_depth, irrigation_intervall, duration, irrigation_period, class_id, class_label) %>%
+    dplyr::summarise(dplyr::across(c(sum_cv_top, sum_cv_bot), ~abs(sum(.x, na.rm = TRUE))),
+                     number_of_substances = dplyr::n()) %>%
+    dplyr::mutate(scenario_label = dplyr::case_when(
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Status Quo",
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long_wet" & irrigation_period == "irrig-period_status-quo" ~ "Klima, feucht",
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long_dry" & irrigation_period == "irrig-period_status-quo" ~ "Klima, trocken",
+       scen == "ablauf_ka_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_growing-season" ~ "Bewässerung (nur Mai-Sep)",
+       scen == "ablauf_o3_median_soil-2m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Ozone-UV",
+       scen == "ablauf_ka_median_soil-1m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden, 1 m",
+       scen == "ablauf_ka_median_soil-3m_irrig-10days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Boden, 3 m",
+       scen == "ablauf_ka_median_soil-2m_irrig-01days" & duration == "long" & irrigation_period == "irrig-period_status-quo" ~ "Bewässerungsintervall, 1 Tag",
+       .default = ""
+    ))
+
+  res_stats_df_class_selected <- res_stats_df_class %>%
+    dplyr::filter(scenario_label != "")
+
+  load_gw <- res_stats_df_class_selected %>%
+    dplyr::group_by(scenario_label) %>%
+    dplyr::summarise(total_sum_cv_bot = sum(sum_cv_bot))
+
+  load_default_per_class <- res_stats_df_class_selected %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(scenario_label == "Status Quo") %>%
+    dplyr::group_by(class_label) %>%
+    dplyr::rename(default_class_sum_cv_top = sum_cv_top,
+                  default_class_sum_cv_bot = sum_cv_bot)  %>%
+    dplyr::summarize(default_class_sum_cv_top = sum(default_class_sum_cv_top),
+                     default_class_sum_cv_bot = sum(default_class_sum_cv_top))  %>%
+    dplyr::select(class_label, default_class_sum_cv_top, default_class_sum_cv_bot)
+
+
+
+  load_per_scenario_and_class <- res_stats_df_class %>%
+    dplyr::group_by(scenario_label, class_label) %>%
+    dplyr::rename(class_sum_cv_top = sum_cv_top,
+                  class_sum_cv_bot = sum_cv_bot)  %>%
+    dplyr::summarize(class_sum_cv_top = sum(class_sum_cv_top),
+                     class_sum_cv_bot = sum(class_sum_cv_bot))  %>%
+    dplyr::select(scenario_label, class_label, class_sum_cv_top, class_sum_cv_bot)
+
+
+
+    load_per_scenario <- res_stats_df_class %>%
+    dplyr::group_by(scenario_label) %>%
+    dplyr::rename(scenario_sum_cv_top = sum_cv_top,
+                  scenario_sum_cv_bot = sum_cv_bot)  %>%
+    dplyr::summarize(scenario_sum_cv_top = sum(scenario_sum_cv_top),
+                     scenario_sum_cv_bot = sum(scenario_sum_cv_bot))  %>%
+    dplyr::select(scenario_label, scenario_sum_cv_top, scenario_sum_cv_bot)
+
+
+    x_desired_order <- c("Status Quo",
+                         "Boden, 1 m",
+                         "Boden, 3 m",
+                         "Klima, trocken",
+                         "Klima, feucht",
+                         "Bewässerungsintervall, 1 Tag",
+                         "Bewässerung (nur Mai-Sep)",
+                         "Ozone-UV"
+                         )
+    
+    gg0 <- res_stats_df_class_selected %>%
+      dplyr::bind_cols(load_default_sum) %>%
+      dplyr::left_join( load_per_scenario_and_class) %>%
+      dplyr::mutate(percent_sum_cv_bot =  class_sum_cv_bot / default_sum_cv_top,
+                    percent_sum_cv_top =  class_sum_cv_top / default_sum_cv_top,
+                    percent_gw = percent_sum_cv_bot/percent_sum_cv_top) %>%
+      tidyr::pivot_longer(cols = tidyselect::starts_with("percent_sum"),
+                          names_to = "variable",
+                          values_to = "value") %>%
+      dplyr::mutate(variable = dplyr::case_when(
+        variable == "percent_sum_cv_bot" ~ "Grundwasser",
+        variable == "percent_sum_cv_top" ~ "Boden",
+        .default = variable),
+        perc_gw = dplyr::if_else(variable == "Grundwasser",
+                                 100*percent_gw,
+                                 100 - 100*percent_gw)#,
+        # value = dplyr::if_else(variable == "Grundwasser",
+        #                          - value,
+        #                          value)
+      ) %>%
+      dplyr::left_join(load_gw) %>%
+      dplyr::left_join(load_per_scenario) %>%
+      ggplot2::ggplot(ggplot2::aes(fill = class_label,
+                                   group = variable,
+                                   y = value,
+                                   x = forcats::fct_relevel(scenario_label, x_desired_order))) +
+      ggplot2::labs(x = "Szenario",
+                    y = "Gesamtfracht normiert auf den Status-Quo (%)",
+                    fill = "Stoffeintrag",
+                    title = ifelse(retardation_short == "retardation_no",
+                                   "ohne Retardation",
+                                   "mit Retardation")) +
+      ggplot2::geom_bar(stat="identity") +
+      ggplot2::facet_wrap(~ variable, scales = "fixed", ncol = 1) +
+      #ggplot2::scale_fill_manual(values = reversed_palette) +
+      ggplot2::scale_y_continuous(labels = scales::percent, breaks=seq(0, 1, 0.1), limits = c(0, 1.05)) +
+      ggplot2::geom_text(ggplot2::aes(label = dplyr::if_else(round(value*100, 0) == 0,
+                                                             "",
+                                                             sprintf("%2.1f %%",  round(value*100, 1)))),
+                         position = ggplot2::position_stack(vjust = 0.5),
+                         size = 3, color = "black") +
+      ggplot2::theme_bw() +
+      ggplot2::theme(legend.position = "top")
+    
+    # Extrahiere die Standardfarben von ggplot2
+    default_colors <- ggplot2::ggplot_build(gg0)$data[[1]]$fill
+    
+    # Kehre die Reihenfolge der Farben um
+    reversed_colors <- rev(default_colors)
+    
+    gg0 <- gg0 +
+      ggplot2::scale_fill_manual(values = reversed_colors)
+    
+   
+     png(sprintf("stoffeintrag_%s.png", retardation_short), 
+        width = 1200, 
+        height = 800)
+    print(gg0)
+    dev.off()
+ })
+```
+
+### Create Conservative Tracer Plots
+
+```{r create_conservative_tracer_plots, eval=FALSE}
+  model_paths <- fs::dir_ls(
+    path =  root_dir ,
+    recurse = TRUE,
+    regexp = "tracer$",
+    type = "directory"
+  )
+
+
+
+  scenarios <- sapply(c(1,10), function(x) paste0("soil-", 1:3, sprintf("m_irrig-%02ddays", x))) %>%
+    as.vector()
+
+  ### read traveltimes sequential
+  # system.time(
+  # traveltimes_list <- lapply(model_paths, function(model_path) {
+  #   setNames(nm = (scenarios), lapply(scenarios, function(scenario) {
+  #     try({
+  #       message(sprintf("Scenario: %s", scenario))
+  #       solute_files <- fs::dir_ls(
+  #         path = model_path,
+  #         recurse = TRUE,
+  #         regexp = sprintf("tracer_%s_.*vs/solute\\d\\d?.out", scenario)
+  #       )
+  #       flextreat.hydrus1d::get_traveltimes(solute_files, dbg = TRUE)
+  #     })
+  #   }))
+  # }))
+
+
+
+  ### read traveltimes in parallel
+  library(future.apply)
+
+  # Set up parallel plan
+  system.time(expr = {
+  future::plan(future::multisession)
+
+  traveltimes_list <- future.apply::future_lapply(model_paths, function(model_path) {
+    setNames(nm = (scenarios), future.apply::future_lapply(scenarios, function(scenario) {
+      try({
+        message(sprintf("Scenario: %s", scenario))
+        solute_files <- fs::dir_ls(
+          path = model_path,
+          recurse = TRUE,
+          regexp = sprintf("tracer_%s_.*vs/solute\\d\\d?.out", scenario)
+        )
+        flextreat.hydrus1d::get_traveltimes(solute_files, dbg = TRUE)
+      })
+    }))
+  })
+  }
+  )
+
+  # Close the parallel plan
+  future::plan(future::sequential)
+  traveltimes_list_backup <-  traveltimes_list
+
+  sapply(seq_along(traveltimes_list), function(i) {
+
+    label <- sprintf("%s", extrahiere_letzte_drei_teile(names(traveltimes_list)[i]))
+
+    htmlwidgets::saveWidget(flextreat.hydrus1d::plot_traveltimes(traveltimes_list[[i]] %>% dplyr::bind_rows(),
+                                                                 title = label ,
+                                                                 ylim = c(0,650)),
+                            file = sprintf("traveltimes_%s.html", label))
+  })
+
+
+    jpeg(filename = "verweilzeiten.jpeg", height = 500, width = 1200, quality = 100)
+    #pdff <- "traveltimes_all_percent_de.pdf"
+    #kwb.utils::preparePdf(pdff)
+
+    traveltimes_df <- lapply(traveltimes_list, function(sublist) sublist %>% dplyr::bind_rows()) %>%
+      dplyr::bind_rows(.id = "scenario_main_raw") %>%
+      dplyr::mutate(
+        scenario_name = stringr::str_remove_all(model_name, "_soil-column_.*vs$") %>% stringr::str_remove_all("tracer_"),
+        scenario_main =  scenario_main_raw %>% extrahiere_letzte_drei_teile() %>% stringr::str_remove("_tracer") %>%
+          stringr::str_remove("irrig-period_") %>% stringr::str_remove("_long"),
+        quarter = lubridate::quarter(date) %>% as.factor(),
+        soil_depth =  stringr::str_extract(scenario_name, "soil-.*m") %>%
+          stringr::str_remove_all("soil-|m") %>%  as.factor(),
+        irrigation_interval = stringr::str_extract(scenario_name, pattern = "irrig.*") %>% stringr::str_extract("[0-9]+"),
+        label_x = sprintf("Bo%sBi%s", soil_depth, irrigation_interval)
+        ) %>%
+      tidyr::separate(col = scenario_main, into = c("irrigation_period", "climate"), sep = "_", remove = FALSE) %>%
+      dplyr::mutate(climate = dplyr::case_when(climate == "wet" ~ "N835",
+                                               climate == "dry" ~ "N380",
+                                               .default = "N606"),
+                    irrigation_period = dplyr::if_else(irrigation_period == "growing-season", "B289", "B405"),
+                    label_legend = sprintf("%s%s", climate, irrigation_period))
+
+
+    scenario_base_median <- traveltimes_df %>%
+      dplyr::filter(
+        scenario_name == "soil-2m_irrig-10days",
+        scenario_main == "status-quo",
+        percentiles == 0.5
+      ) %>%
+      dplyr::select(- time_top, - time_bot) %>%
+      dplyr::rename(time_diff_base = time_diff)
+
+    traveltimes_bp <- traveltimes_df %>%
+      dplyr::filter(percentiles == 0.5) %>%
+      dplyr::left_join(scenario_base_median[, c("month_id", "time_diff_base")] %>% dplyr::mutate(percentiles = 0.5)) %>%
+      dplyr::mutate(time_diff_percent = 100 + 100 * (time_diff - time_diff_base) / time_diff_base) %>%
+      dplyr::filter(!is.na(time_diff_percent))
+
+  # Plotting ---------------------------------------------------------------------
+
+  y_lim <- c(0,350)
+
+  tt_bp_percent <- traveltimes_bp %>%
+    ggplot2::ggplot(ggplot2::aes(x = forcats::fct_reorder(as.factor(label_x), time_diff_percent),
+                                 y = time_diff_percent,
+                                 col = label_legend)) +
+    ggplot2::geom_boxplot(outliers = FALSE) +
+    # ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(
+    #   jitter.width = 0.1,
+    #   dodge.width = 0.75),
+    #   alpha = 0.6) +
+    ggplot2::ylim(y_lim) +
+    ggplot2::labs(y = "Mittlere Verweilzeit (%) im Vergleich zu Status Quo",
+                  x = "Bodenmächtigkeit (m) und Bewässerungsintervall (Tage)",
+                  col = "Niederschlag und Bew\u00E4sserung (mm/Jahr)",
+                  title = "") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(#legend.position=c(0.85,0.85),
+                   legend.box.just = "left",
+                   legend.direction = "vertical",
+                   legend.position = "top",
+                   legend.margin = ggplot2::margin(),
+                   legend.text = ggplot2::element_text(size = 14),# face = "bold"),  # Größer und dick
+                   legend.title = ggplot2::element_text(size = 15, face = "bold"),
+                   axis.text.x = ggplot2::element_text(size = 14, face = "bold"),
+                   axis.text.y = ggplot2::element_text(size = 14, face = "bold"),  # Größer und dick
+                   axis.title.x = ggplot2::element_text(size = 15, face = "bold"),  # Größer und dick
+                   axis.title.y = ggplot2::element_text(size = 15, face = "bold"),
+                   plot.title = ggplot2::element_text(size = 17, face = "bold"),
+                   plot.subtitle = ggplot2::element_text(size = 15) #,   # Größer und dick
+                   #plot.subtitle = ggplot2::element_text(size = 14, face = "bold")
+    ) +
+    ggplot2::guides(color = ggplot2::guide_legend(nrow = 1, byrow = FALSE))
+
+  print(tt_bp_percent)
+
+
+  #kwb.utils::finishAndShowPdf(pdff)
+  dev.off()
+
+
+
+```

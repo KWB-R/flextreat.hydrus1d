@@ -19,13 +19,13 @@ Depends:
     R (>= 2.10)
 Imports:
     dplyr,
-    fs,
     ggplot2,
     kwb.hydrus1d,
     kwb.utils,
     lubridate,
     magrittr,
     measurements,
+    plotly,
     pkgbuild,
     rlang,
     scales,
@@ -36,21 +36,25 @@ Imports:
 Suggests: 
     covr,
     DT,
+    future.apply,
+    fs,
     knitr,
     kwb.dwd,
+    kwb.pkgbuild,
     kwb.python,
-    plotly,
+    openxlsx,
     reticulate,
     rmarkdown,
     soilDB
 VignetteBuilder: 
     knitr
-Remotes: 
-    github::kwb-r/kwb.dwd,
+Remotes:
+    github::kwb-r/kwb.dwd@get-rid-of-rgdal,
     github::kwb-r/kwb.hydrus1d,
+    github::kwb-r/kwb.pkgbuild,
     github::kwb-r/kwb.python,
     github::kwb-r/kwb.utils
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.2
+RoxygenNote: 7.3.2

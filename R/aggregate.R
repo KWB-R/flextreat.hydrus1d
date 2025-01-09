@@ -55,11 +55,17 @@ aggregate_solute <- function(solute,
     dplyr::mutate(diff_time = c(0, diff(.data$time)),
                   time_c_top = .data$diff_time * .data$c_top,
                   time_c_bot = .data$diff_time * .data$c_bot,
+                  diff_sum_cv_top = c(0,diff(.data$sum_cv_top)),
+                  diff_sum_cv_bot = c(0,diff(.data$sum_cv_bot)),
                   time_integer = as.integer(.data$time)) %>%
     dplyr::group_by(.data[[col_aggr]]) %>%
     dplyr::summarise(diff_time = sum(.data$diff_time),
                      c_top = sum(.data$time_c_top)/.data$diff_time,
-                     c_bot = sum(.data$time_c_bot)/.data$diff_time) %>%
+                     c_bot = sum(.data$time_c_bot)/.data$diff_time,
+                     cv_top = sum(.data$diff_time * .data$cv_top) / sum(.data$diff_time),
+                     cv_bot = sum(.data$diff_time * .data$cv_bot) / sum(.data$diff_time),
+                     mass_top = sum(.data$diff_sum_cv_top),
+                     mass_bot = sum(.data$diff_sum_cv_bot)) %>%
     dplyr::relocate(.data[[col_aggr]])
 }
 

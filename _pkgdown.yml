@@ -11,7 +11,7 @@ authors:
       alt='Project FLexTreat' height='24' />
   Kompetenzzentrum Wasser Berlin gGmbH (KWB):
     href: http://www.kompetenz-wasser.de
-    html: <img src='https://publications.kompetenz-wasser.de/img/KWB-Logo.svg'
+    html: <img src='https://logos.kompetenz-wasser.io/KWB_Logo_M_Blau_RGB.svg'
       alt='KWB' width='72' />
 template:
   bootstrap: 5
@@ -63,5 +63,10 @@ reference:
       Helper functions for HYDRUS-1D
     contents:
       - add_times
+      - combine_dataframes
+      - copy_column
       - create_monthly_atm
+      - get_traveltimes
+      - interpolate_time
+      - recalculate_ctop_with_virtualstorage
       - select_hydrologic_years
