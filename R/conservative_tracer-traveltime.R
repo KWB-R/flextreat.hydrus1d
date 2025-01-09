@@ -6,6 +6,7 @@
 #' @return tibble with interpolated times for percentiles
 #' @export
 #' @importFrom dplyr distinct
+#' @importFrom stats approx
 interpolate_time <- function(
     solute,
     percentiles = c(0.01, 0.05, 0.1, 0.25,0.5, 0.75, 0.9, 0.95, 0.99)
@@ -23,10 +24,10 @@ interpolate_time <- function(
 
   tibble::tibble(
   percentiles = percentiles,
-  time_top = approx(solute_unique_top$sum_cv_top, solute_unique_top$time,
+  time_top = stats::approx(solute_unique_top$sum_cv_top, solute_unique_top$time,
                     xout = sum_cv_top_values,
                     method = "linear", rule = 1)$y,
-  time_bot = approx(solute_unique_bot$sum_cv_bot, solute_unique_bot$time,
+  time_bot = stats::approx(solute_unique_bot$sum_cv_bot, solute_unique_bot$time,
          xout = sum_cv_bot_values,
          method = "linear", rule = 1)$y,
   time_diff = time_bot - time_top
@@ -59,7 +60,7 @@ get_last_day_of_months <- function(ids,
 #' @param solute_files paths to solute files, with good naming convention for
 #' monthly solute exposition (e.g. 0110, solute1: first month, solute10: tenth
 #' month after simulation start)
-#' @param print debug messages (default: TRUE)
+#' @param dbg debug messages (default: TRUE)
 #' @return tibble with time of substance at top/bottom and diff time. Note that
 #' the percentile relate to the substance load
 #' @export

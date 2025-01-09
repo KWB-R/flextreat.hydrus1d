@@ -31,4 +31,3 @@ tb_neu <- copy_column(tb, "Wert", 3)
 print(tb_neu)
 
 }
-\keyword{internal}

@@ -6,7 +6,7 @@
 #' @param number_of_new_columns  number of columns to be copied
 #'
 #' @return df with copied column names
-#' @keywords internal
+#' @export
 #' @examples
 #' # Beispiel-Tibble
 #' tb <- tibble::tibble(

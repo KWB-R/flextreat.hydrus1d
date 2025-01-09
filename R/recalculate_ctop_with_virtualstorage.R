@@ -6,14 +6,14 @@
 #' @export
 #'
 combine_dataframes <- function(df_list) {
-  # Überprüfen, ob die Liste nicht leer ist
+  # Ueberprüfen, ob die Liste nicht leer ist
   if (length(df_list) == 0) {
     stop("Die Liste der DataFrames ist leer")
   }
 
-  # Überprüfen, ob alle Elemente in der Liste DataFrames sind
+  # Ueberprüfen, ob alle Elemente in der Liste DataFrames sind
   if (!all(sapply(df_list, is.data.frame))) {
-    stop("Alle Elemente in der Liste müssen DataFrames sein")
+    stop("Alle Elemente in der Liste muessen DataFrames sein")
   }
 
   # Kombiniere die DataFrames mit left_join
@@ -65,7 +65,7 @@ vs_list <- lapply(seq_len(length(c_tops)), function(i) {
     dplyr::mutate(dplyr::across(tidyselect::starts_with("cT"), ~ . * Prec, .names = "Prec_{.col}"))
 
 
-  # Funktion zum Identifizieren zusammenhängender Gruppen
+  # Funktion zum Identifizieren zusammenhaengender Gruppen
   data_grouped <- data %>%
     dplyr::arrange(tAtm) %>%
     dplyr::mutate(group = cumsum(store != dplyr::lag(store, default = dplyr::first(store))))

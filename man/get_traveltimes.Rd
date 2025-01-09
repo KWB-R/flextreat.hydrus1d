@@ -11,7 +11,7 @@ get_traveltimes(solute_files, dbg = TRUE)
 monthly solute exposition (e.g. 0110, solute1: first month, solute10: tenth
 month after simulation start)}
 
-\item{print}{debug messages (default: TRUE)}
+\item{dbg}{debug messages (default: TRUE)}
 }
 \value{
 tibble with time of substance at top/bottom and diff time. Note that
