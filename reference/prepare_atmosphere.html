@@ -27,8 +27,8 @@ order to track the share of cleaned wastewater in the system inflow rate (as
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/modelling_no-irrigation.html">Modelling with R: No Irrigation (2017-05-01 - 2020-10-31)</a></li>
-    <li><a class="dropdown-item" href="../articles/modelling_python.html">Modelling with Python</a></li>
     <li><a class="dropdown-item" href="../articles/modelling_r.html">Modelling with R: Status Quo (2017-05-01 - 2020-10-31)</a></li>
+    <li><a class="dropdown-item" href="../articles/modelling_scenarios.html">Modelling with R: Scenario Analysis</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -103,7 +103,7 @@ used for irrigation (default: 0)</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">atm</span> <span class="op">&lt;-</span> <span class="fu"><a href="prepare_atmosphere_data.html">prepare_atmosphere_data</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">atm_selected</span> <span class="op">&lt;-</span> <span class="fu"><a href="select_hydrologic_years.html">select_hydrologic_years</a></span><span class="op">(</span><span class="va">atm</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prepare_atmosphere</span><span class="op">(</span><span class="va">atm_selected</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2,375 × 14</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2,375 × 13</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     tAtm  Prec rSoil rRoot hCritA    rB    hB    ht  tTop  tBot  Ampl  cTop</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span>     1 0.106 0.240     0 <span style="text-decoration: underline;">100</span>000     0     0     0     0     0     0  99.3</span>
@@ -117,7 +117,7 @@ used for irrigation (default: 0)</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>     9 0.106 0.219     0 <span style="text-decoration: underline;">100</span>000     0     0     0     0     0     0  99.3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>    10 0.106 0.289     0 <span style="text-decoration: underline;">100</span>000     0     0     0     0     0     0  99.3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 2,365 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 2 more variables: cBot &lt;dbl&gt;, RootDepth &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1 more variable: cBot &lt;dbl&gt;</span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
