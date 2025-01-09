@@ -37,7 +37,9 @@ Imports:
 Suggests: 
     covr,
     DT,
+    future.apply,
     knitr,
+    kwb.db,
     kwb.dwd,
     kwb.python,
     plotly,
@@ -46,7 +48,8 @@ Suggests:
     soilDB
 VignetteBuilder: 
     knitr
-Remotes: 
+Remotes:
+    github::kwb-r/kwb.db,
     github::kwb-r/kwb.dwd,
     github::kwb-r/kwb.hydrus1d,
     github::kwb-r/kwb.python,
