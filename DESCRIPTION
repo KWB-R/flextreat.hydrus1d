@@ -51,7 +51,7 @@ VignetteBuilder:
     knitr
 Remotes:
     github::kwb-r/kwb.db,
-    github::kwb-r/kwb.dwd,
+    github::kwb-r/kwb.dwd@get-rid-of-rgdal,
     github::kwb-r/kwb.hydrus1d,
     github::kwb-r/kwb.python,
     github::kwb-r/kwb.utils
