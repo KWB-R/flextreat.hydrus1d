@@ -1,3 +1,9 @@
+# [flextreat.hydrus1d 0.2.0](https://github.com/KWB-R/flextreat.hydrus1d/releases/tag/v0.2.0) <small>2025-01-10</small>
+
+Final workflow with scenarios used in FlexTreat final report. The R workflow for 
+creating, running and analysing the different scenarios is available in the 
+article [Modelling with R: Scenario Analysis](https://kwb-r.github.io/flextreat.hydrus1d/articles/modelling_scenarios.html)
+
 # [flextreat.hydrus1d 0.1.0](https://github.com/KWB-R/flextreat.hydrus1d/releases/tag/v0.1.0) <small>2022-11-17</small>
 
 Improvements before Knowledge Exchange with Project [PU2R](https://bmbf-wave.de/Verbundprojekte+nach+Themenfeldern/Kommunales+Abwasser/PU2R.html) on `2022-11-22`
